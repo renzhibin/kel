@@ -1,0 +1,18 @@
+job:
+  type: "EXTRACT_KINGBASE"
+  name: "test_job"
+  description: "test job"
+extract_database:
+  host: "127.0.0.1"
+  port: 5432
+  name: "testdb"
+  user: "user"
+  password: "pass"
+work_dir: "work"
+exchange_dir: "exchange"
+extract_tasks:
+  - type: "FULL"
+    tables:
+      - "public.t1"
+runtime:
+  table_concurrency: 5

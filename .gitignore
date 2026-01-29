@@ -1,0 +1,15 @@
+# Maven
+**/target/
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Kel runtime work dir
+kel/work/

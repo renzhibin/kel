@@ -1,0 +1,25 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+server:
+  port: 8081
+kel:
+  conf:
+    base-dir: classpath:conf/dev
+
+xxl:
+  job:
+    accessToken: default_token
+    admin:
+      addresses: http://localhost:8080/xxl-job-admin
+    executor:
+      appname: kel-executor
+      # address 留空时自动注册为 ip:port
+      address:
+      ip:
+      port: 9999
+      logpath: logs/xxl-job/jobhandler
+      logretentiondays: 30
+

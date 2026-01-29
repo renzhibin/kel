@@ -1,0 +1,10 @@
+job:
+  type: "FILE_EXTRACT"
+  name: "bss_file_extract"
+  description: "BSS 文件采集示例作业（TODO: 按实际文件源配置采集目录）"
+work_dir: "work"
+exchange_dir: "exchange"
+extract_tasks: []
+runtime:
+  table_concurrency: 1
+

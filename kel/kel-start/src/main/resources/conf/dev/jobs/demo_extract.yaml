@@ -1,0 +1,19 @@
+job:
+  type: "EXTRACT_KINGBASE"
+  name: "demo"
+  description: "demo 作业"
+extract_database:
+  host: "127.0.0.1"
+  port: 5432
+  name: "postgres"
+  user: "postgres"
+  password: "123456"
+work_dir: "work"
+exchange_dir: "exchange"
+extract_tasks:
+  - type: "FULL"
+    tables:
+      - "pg_catalog.pg_tables"
+runtime:
+  table_concurrency: 1
+

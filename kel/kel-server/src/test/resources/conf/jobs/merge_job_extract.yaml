@@ -1,0 +1,7 @@
+job:
+  type: "EXTRACT_KINGBASE"
+  name: "merge_job"
+  description: "merge test"
+work_dir: "work"
+runtime:
+  table_concurrency: 10

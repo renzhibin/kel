@@ -1,0 +1,7 @@
+concurrency:
+  default_table_concurrency: 3
+retry:
+  maxRetries: 2
+  retryIntervalSec: 30
+extract:
+  work_dir: "work"

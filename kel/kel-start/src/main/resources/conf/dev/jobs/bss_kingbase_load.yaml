@@ -1,0 +1,9 @@
+job:
+  type: "KINGBASE_LOAD"
+  name: "bss_kingbase_load"
+  description: "BSS 金仓库加载示例作业（TODO: 按实际目标库补充 load 配置）"
+work_dir: "work"
+exchange_dir: "exchange"
+runtime:
+  table_concurrency: 1
+
