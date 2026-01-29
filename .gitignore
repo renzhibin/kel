@@ -13,3 +13,6 @@
 
 # Kel runtime work dir
 kel/work/
+
+# xxl-job mysql data
+kel/deploy/xxl-job/mysql-data/
