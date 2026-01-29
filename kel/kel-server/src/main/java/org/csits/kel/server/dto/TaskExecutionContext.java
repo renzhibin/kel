@@ -1,5 +1,7 @@
 package org.csits.kel.server.dto;
 
+import java.util.HashMap;
+import java.util.Map;
 import lombok.Data;
 
 /**
@@ -33,6 +35,11 @@ public class TaskExecutionContext {
      */
     private JobConfig jobConfig;
 
+    /**
+     * 上下文属性，用于在执行过程中传递数据。
+     */
+    private Map<String, Object> attributes = new HashMap<>();
+
     public TaskExecutionContext() {
     }
 
@@ -43,6 +50,21 @@ public class TaskExecutionContext {
         this.jobCode = jobCode;
         this.globalConfig = globalConfig;
         this.jobConfig = jobConfig;
+    }
+
+    /**
+     * 设置属性
+     */
+    public void setAttribute(String key, Object value) {
+        this.attributes.put(key, value);
+    }
+
+    /**
+     * 获取属性
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getAttribute(String key) {
+        return (T) this.attributes.get(key);
     }
 }
 

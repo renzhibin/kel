@@ -6,13 +6,17 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.apache.commons.io.FileUtils;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * 占位实现：使用 SHA-256 模拟 SM3，按字节复制模拟 SM4。
  * 实际环境中可替换为真实国密库。
+ *
+ * 当配置 kel.crypto.provider=simple 时使用此实现。
  */
 @Component
+@ConditionalOnProperty(name = "kel.crypto.provider", havingValue = "simple")
 public class SimpleSmCryptoManager implements SmCryptoManager {
 
     @Override

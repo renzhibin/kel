@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KEL管控中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .card {
+            box-shadow: 0 1px 3px rgba(0,0,0,.12);
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .progress-bar-animated {
+            animation: progress-bar-stripes 1s linear infinite;
+        }
+        .badge-status {
+            font-size: 0.85rem;
+            padding: 0.35em 0.65em;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-database"></i> KEL管控中心
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'dashboard'}" @click="currentView = 'dashboard'" href="#">
+                                <i class="bi bi-speedometer2"></i> 仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'tasks'}" @click="currentView = 'tasks'" href="#">
+                                <i class="bi bi-list-task"></i> 任务管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'jobs'}" @click="currentView = 'jobs'" href="#">
+                                <i class="bi bi-play-circle"></i> 作业执行
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'system'}" @click="currentView = 'system'" href="#">
+                                <i class="bi bi-gear"></i> 系统监控
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid mt-4">
+            <!-- 仪表盘视图 -->
+            <div v-if="currentView === 'dashboard'">
+                <h2 class="mb-4">仪表盘</h2>
+
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-primary text-white">
+                            <div class="stat-number">{{ stats.total }}</div>
+                            <div>总任务数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-info text-white">
+                            <div class="stat-number">{{ stats.running }}</div>
+                            <div>运行中</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-success text-white">
+                            <div class="stat-number">{{ stats.success }}</div>
+                            <div>成功</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stat-card bg-danger text-white">
+                            <div class="stat-number">{{ stats.failed }}</div>
+                            <div>失败</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近任务 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">最近任务</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>任务ID</th>
+                                    <th>作业编码</th>
+                                    <th>批次号</th>
+                                    <th>状态</th>
+                                    <th>进度</th>
+                                    <th>开始时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="task in recentTasks" :key="task.id">
+                                    <td>{{ task.id }}</td>
+                                    <td>{{ task.jobCode }}</td>
+                                    <td>{{ task.batchNumber }}</td>
+                                    <td>
+                                        <span class="badge badge-status" :class="getStatusClass(task.status)">
+                                            {{ task.status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" :class="{'progress-bar-animated progress-bar-striped': task.status === 'RUNNING'}"
+                                                 :style="{width: task.progress + '%'}">
+                                                {{ task.progress }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ formatDate(task.startTime) }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" @click="viewTaskDetail(task.id)">
+                                            <i class="bi bi-eye"></i> 详情
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务管理视图 -->
+            <div v-if="currentView === 'tasks'">
+                <h2 class="mb-4">任务管理</h2>
+
+                <!-- 过滤器 -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" v-model="taskFilter.jobCode" placeholder="作业编码">
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" v-model="taskFilter.status">
+                                    <option value="">全部状态</option>
+                                    <option value="RUNNING">运行中</option>
+                                    <option value="SUCCESS">成功</option>
+                                    <option value="FAILED">失败</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary" @click="loadTasks">
+                                    <i class="bi bi-search"></i> 查询
+                                </button>
+                                <button class="btn btn-secondary ms-2" @click="resetTaskFilter">
+                                    <i class="bi bi-arrow-clockwise"></i> 重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 任务列表 -->
+                <div class="card">
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>任务ID</th>
+                                    <th>作业编码</th>
+                                    <th>批次号</th>
+                                    <th>状态</th>
+                                    <th>当前阶段</th>
+                                    <th>进度</th>
+                                    <th>开始时间</th>
+                                    <th>结束时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="task in tasks" :key="task.id">
+                                    <td>{{ task.id }}</td>
+                                    <td>{{ task.jobCode }}</td>
+                                    <td>{{ task.batchNumber }}</td>
+                                    <td>
+                                        <span class="badge badge-status" :class="getStatusClass(task.status)">
+                                            {{ task.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ task.currentStage }}</td>
+                                    <td>{{ task.progress }}%</td>
+                                    <td>{{ formatDate(task.startTime) }}</td>
+                                    <td>{{ formatDate(task.endTime) }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info me-1" @click="viewTaskDetail(task.id)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" @click="deleteTask(task.id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- 分页 -->
+                        <nav v-if="taskPagination.total > 0">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item" :class="{disabled: taskPagination.page === 0}">
+                                    <a class="page-link" @click="changePage(taskPagination.page - 1)">上一页</a>
+                                </li>
+                                <li class="page-item active">
+                                    <span class="page-link">第 {{ taskPagination.page + 1 }} 页</span>
+                                </li>
+                                <li class="page-item" :class="{disabled: (taskPagination.page + 1) * taskPagination.size >= taskPagination.total}">
+                                    <a class="page-link" @click="changePage(taskPagination.page + 1)">下一页</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作业执行视图 -->
+            <div v-if="currentView === 'jobs'">
+                <h2 class="mb-4">作业执行</h2>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="bi bi-download"></i> 卸载作业</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">作业编码</label>
+                                    <input type="text" class="form-control" v-model="extractJobCode" placeholder="输入作业编码">
+                                </div>
+                                <button class="btn btn-success" @click="triggerExtract" :disabled="!extractJobCode">
+                                    <i class="bi bi-play-fill"></i> 执行卸载
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-upload"></i> 加载作业</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">作业编码</label>
+                                    <input type="text" class="form-control" v-model="loadJobCode" placeholder="输入作业编码">
+                                </div>
+                                <button class="btn btn-primary" @click="triggerLoad" :disabled="!loadJobCode">
+                                    <i class="bi bi-play-fill"></i> 执行加载
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 执行结果 -->
+                <div v-if="jobResult" class="card mt-3">
+                    <div class="card-header" :class="jobResult.success ? 'bg-success text-white' : 'bg-danger text-white'">
+                        <h5 class="mb-0">执行结果</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>消息:</strong> {{ jobResult.message }}</p>
+                        <p v-if="jobResult.taskId"><strong>任务ID:</strong> {{ jobResult.taskId }}</p>
+                        <p v-if="jobResult.batchNumber"><strong>批次号:</strong> {{ jobResult.batchNumber }}</p>
+                        <button v-if="jobResult.taskId" class="btn btn-info" @click="viewTaskDetail(jobResult.taskId)">
+                            查看任务详情
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统监控视图 -->
+            <div v-if="currentView === 'system'">
+                <h2 class="mb-4">系统监控</h2>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">磁盘空间监控</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">检查路径</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" v-model="diskPath" placeholder="输入路径，如: /data">
+                                <button class="btn btn-primary" @click="checkDiskSpace">
+                                    <i class="bi bi-search"></i> 检查
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="diskInfo" class="mt-4">
+                            <h6>磁盘信息</h6>
+                            <table class="table">
+                                <tr>
+                                    <th>路径</th>
+                                    <td>{{ diskInfo.path }}</td>
+                                </tr>
+                                <tr>
+                                    <th>总空间</th>
+                                    <td>{{ diskInfo.totalSpaceGb?.toFixed(2) }} GB</td>
+                                </tr>
+                                <tr>
+                                    <th>可用空间</th>
+                                    <td>{{ diskInfo.usableSpaceGb?.toFixed(2) }} GB</td>
+                                </tr>
+                                <tr>
+                                    <th>已用空间</th>
+                                    <td>{{ diskInfo.usedSpaceGb?.toFixed(2) }} GB</td>
+                                </tr>
+                                <tr>
+                                    <th>使用率</th>
+                                    <td>
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar" :class="getDiskUsageClass(diskInfo.usedPercentage)"
+                                                 :style="{width: diskInfo.usedPercentage + '%'}">
+                                                {{ diskInfo.usedPercentage?.toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务详情模态框 -->
+        <div class="modal fade" id="taskDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">任务详情</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" v-if="selectedTask">
+                        <h6>基本信息</h6>
+                        <table class="table table-sm">
+                            <tr><th>任务ID</th><td>{{ selectedTask.id }}</td></tr>
+                            <tr><th>作业编码</th><td>{{ selectedTask.jobCode }}</td></tr>
+                            <tr><th>批次号</th><td>{{ selectedTask.batchNumber }}</td></tr>
+                            <tr><th>状态</th><td><span class="badge" :class="getStatusClass(selectedTask.status)">{{ selectedTask.status }}</span></td></tr>
+                            <tr><th>当前阶段</th><td>{{ selectedTask.currentStage }}</td></tr>
+                            <tr><th>进度</th><td>{{ selectedTask.progress }}%</td></tr>
+                            <tr><th>开始时间</th><td>{{ formatDate(selectedTask.startTime) }}</td></tr>
+                            <tr><th>结束时间</th><td>{{ formatDate(selectedTask.endTime) }}</td></tr>
+                            <tr v-if="selectedTask.errorMessage"><th>错误信息</th><td class="text-danger">{{ selectedTask.errorMessage }}</td></tr>
+                        </table>
+
+                        <div v-if="taskProgress">
+                            <h6 class="mt-3">进度信息</h6>
+                            <table class="table table-sm">
+                                <tr v-if="taskProgress.durationSeconds"><th>已用时间</th><td>{{ formatDuration(taskProgress.durationSeconds) }}</td></tr>
+                                <tr v-if="taskProgress.estimatedRemainingSeconds"><th>预计剩余</th><td>{{ formatDuration(taskProgress.estimatedRemainingSeconds) }}</td></tr>
+                            </table>
+                        </div>
+
+                        <div v-if="taskStatistics">
+                            <h6 class="mt-3">统计信息</h6>
+                            <table class="table table-sm">
+                                <tr v-if="taskStatistics.totalTables"><th>导出表数</th><td>{{ taskStatistics.totalTables }}</td></tr>
+                                <tr v-if="taskStatistics.totalRows"><th>总行数</th><td>{{ taskStatistics.totalRows }}</td></tr>
+                                <tr v-if="taskStatistics.totalFiles"><th>文件数</th><td>{{ taskStatistics.totalFiles }}</td></tr>
+                                <tr v-if="taskStatistics.compressionRatio"><th>压缩率</th><td>{{ (taskStatistics.compressionRatio * 100).toFixed(2) }}%</td></tr>
+                                <tr v-if="taskStatistics.splitCount"><th>分片数</th><td>{{ taskStatistics.splitCount }}</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

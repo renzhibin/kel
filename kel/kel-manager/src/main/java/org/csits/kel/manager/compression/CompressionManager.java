@@ -23,5 +23,14 @@ public interface CompressionManager {
      * 将 tar.gz 解压到目标目录。
      */
     void decompressTarGz(Path archive, Path targetDir) throws IOException;
+
+    /**
+     * 合并分片文件并解压到目标目录。
+     *
+     * @param inputDir 输入目录（包含分片文件或主压缩包）
+     * @param outputDir 输出目录
+     * @return 输出目录
+     */
+    Path mergeAndDecompress(Path inputDir, Path outputDir) throws IOException;
 }
 

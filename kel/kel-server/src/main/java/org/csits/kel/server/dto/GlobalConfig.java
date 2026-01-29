@@ -27,6 +27,12 @@ public class GlobalConfig {
 
     private ExtractGlobalConfig extract;
 
+    @JsonProperty("file_naming")
+    private FileNamingConfig fileNaming;
+
+    @JsonProperty("disk_protection")
+    private DiskProtectionConfig diskProtection;
+
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ConcurrencyConfig {
@@ -106,6 +112,34 @@ public class GlobalConfig {
          * 是否在完成后清理工作目录。
          */
         private Boolean cleanupWorkDir;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class DiskProtectionConfig {
+
+        /**
+         * 是否启用磁盘水位保护
+         */
+        private Boolean enabled;
+
+        /**
+         * 最小可用空间（GB）
+         */
+        @JsonProperty("min_free_space_gb")
+        private Double minFreeSpaceGb;
+
+        /**
+         * 最小可用空间百分比
+         */
+        @JsonProperty("min_free_space_percent")
+        private Double minFreeSpacePercent;
+
+        /**
+         * 检查失败时是否拒绝执行
+         */
+        @JsonProperty("fail_on_check_error")
+        private Boolean failOnCheckError;
     }
 }
 

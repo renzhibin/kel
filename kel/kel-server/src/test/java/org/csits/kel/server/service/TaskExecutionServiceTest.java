@@ -38,6 +38,8 @@ class TaskExecutionServiceTest {
     private ExtractPluginRegistry extractPluginRegistry;
     @Mock
     private LoadPluginRegistry loadPluginRegistry;
+    @Mock
+    private ManifestService manifestService;
 
     private TaskExecutionService service;
 
@@ -51,7 +53,8 @@ class TaskExecutionServiceTest {
             taskLogger,
             batchNumberGenerator,
             extractPluginRegistry,
-            loadPluginRegistry
+            loadPluginRegistry,
+            manifestService
         );
     }
 

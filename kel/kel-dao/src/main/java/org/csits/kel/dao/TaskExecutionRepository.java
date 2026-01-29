@@ -1,16 +1,46 @@
 package org.csits.kel.dao;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
- * 任务执行仓储接口，当前提供内存实现，后续可替换为数据库实现。
+ * 任务执行仓储接口，支持内存和数据库两种实现。
  */
 public interface TaskExecutionRepository {
 
-    TaskExecutionEntity create(TaskExecutionEntity entity);
+    /**
+     * 保存任务执行记录（新增或更新）
+     */
+    TaskExecutionEntity save(TaskExecutionEntity entity);
 
-    void update(TaskExecutionEntity entity);
+    /**
+     * 根据ID查询任务执行记录
+     */
+    Optional<TaskExecutionEntity> findById(Long id);
 
-    Optional<TaskExecutionEntity> findById(Long taskId);
+    /**
+     * 根据作业编码查询任务执行记录列表
+     */
+    List<TaskExecutionEntity> findByJobCode(String jobCode);
+
+    /**
+     * 根据批次号查询任务执行记录
+     */
+    Optional<TaskExecutionEntity> findByBatchNumber(String batchNumber);
+
+    /**
+     * 查询所有任务执行记录
+     */
+    List<TaskExecutionEntity> findAll();
+
+    /**
+     * 删除任务执行记录
+     */
+    void deleteById(Long id);
+
+    /**
+     * 统计任务执行记录总数
+     */
+    long count();
 }
 

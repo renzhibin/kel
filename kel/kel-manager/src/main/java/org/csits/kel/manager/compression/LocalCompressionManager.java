@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 /**
  * 本地 tar.gz 压缩及简单分片实现。
  */
+@Slf4j
 @Component
 public class LocalCompressionManager implements CompressionManager {
 
@@ -106,6 +108,85 @@ public class LocalCompressionManager implements CompressionManager {
                     Files.copy(tais, dest);
                 }
             }
+        }
+    }
+
+    @Override
+    public Path mergeAndDecompress(Path inputDir, Path outputDir) throws IOException {
+        if (!Files.exists(inputDir) || !Files.isDirectory(inputDir)) {
+            throw new IOException("输入目录不存在: " + inputDir);
+        }
+
+        // 1. 查找分片文件（.tar.gz.001, .002, ...）
+        List<Path> splits = findSplitFiles(inputDir);
+
+        if (splits.isEmpty()) {
+            // 无分片，查找主文件
+            Path mainArchive = findMainArchive(inputDir);
+            if (mainArchive != null) {
+                log.info("未找到分片文件，直接解压主文件: {}", mainArchive);
+                decompressTarGz(mainArchive, outputDir);
+                return outputDir;
+            } else {
+                throw new IOException("未找到压缩包或分片文件: " + inputDir);
+            }
+        }
+
+        // 2. 合并分片到临时文件
+        log.info("找到 {} 个分片文件，开始合并", splits.size());
+        Path merged = Files.createTempFile("kel-merged-", ".tar.gz");
+        try {
+            try (FileOutputStream out = new FileOutputStream(merged.toFile())) {
+                for (Path split : splits) {
+                    log.debug("合并分片: {}", split.getFileName());
+                    Files.copy(split, out);
+                }
+            }
+
+            // 3. 解压合并后的文件
+            log.info("分片合并完成，开始解压");
+            decompressTarGz(merged, outputDir);
+
+            return outputDir;
+        } finally {
+            // 4. 清理临时文件
+            Files.deleteIfExists(merged);
+        }
+    }
+
+    /**
+     * 查找分片文件
+     */
+    private List<Path> findSplitFiles(Path dir) throws IOException {
+        try (java.util.stream.Stream<Path> stream = Files.list(dir)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .filter(p -> {
+                    String name = p.getFileName().toString();
+                    // 匹配 *.tar.gz.001, *.tar.gz.002 等
+                    return name.contains(".tar.gz.") && name.matches(".*\\.tar\\.gz\\.\\d{3}$");
+                })
+                .sorted((p1, p2) -> {
+                    // 按文件名排序，确保 .001, .002, .003 的顺序
+                    return p1.getFileName().toString().compareTo(p2.getFileName().toString());
+                })
+                .collect(java.util.stream.Collectors.toList());
+        }
+    }
+
+    /**
+     * 查找主压缩包（不含分片后缀）
+     */
+    private Path findMainArchive(Path dir) throws IOException {
+        try (java.util.stream.Stream<Path> stream = Files.list(dir)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .filter(p -> {
+                    String name = p.getFileName().toString();
+                    return name.endsWith(".tar.gz") && !name.matches(".*\\.\\d{3}$");
+                })
+                .findFirst()
+                .orElse(null);
         }
     }
 }

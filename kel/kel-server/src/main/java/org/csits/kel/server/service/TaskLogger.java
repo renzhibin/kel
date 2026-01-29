@@ -1,5 +1,6 @@
 package org.csits.kel.server.service;
 
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.csits.kel.dao.TaskExecutionEntity;
@@ -20,8 +21,8 @@ public class TaskLogger {
     public void logProgress(Long taskId, String phase, int progress, String message) {
         taskExecutionRepository.findById(taskId).ifPresent(entity -> {
             entity.setProgress(progress);
-            entity.setMessage(message);
-            taskExecutionRepository.update(entity);
+            entity.setCurrentStage(phase);
+            taskExecutionRepository.save(entity);
         });
         log.info("[taskId={}] [{}] progress={}, message={}", taskId, phase, progress, message);
     }
@@ -37,11 +38,14 @@ public class TaskLogger {
     private void updateStatus(Long taskId, TaskExecutionStatus status, int progress,
                               String message, String error) {
         taskExecutionRepository.findById(taskId).ifPresent(entity -> {
-            entity.setStatus(status);
+            entity.setStatus(status.name());
             entity.setProgress(progress);
-            entity.setMessage(message);
+            entity.setCurrentStage(message);
             entity.setErrorMessage(error);
-            taskExecutionRepository.update(entity);
+            if (status == TaskExecutionStatus.SUCCESS || status == TaskExecutionStatus.FAILED) {
+                entity.setEndTime(LocalDateTime.now());
+            }
+            taskExecutionRepository.save(entity);
         });
         log.info("[taskId={}] status={}, progress={}, message={}, error={}",
             taskId, status, progress, message, error);

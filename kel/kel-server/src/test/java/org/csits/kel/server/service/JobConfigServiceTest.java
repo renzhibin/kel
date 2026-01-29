@@ -26,7 +26,7 @@ class JobConfigServiceTest {
 
     @Test
     void loadMergedConfig_jobRuntimeTableConcurrencyOverridesGlobal() throws IOException {
-        JobConfigService.MergedResult result = service.loadMergedConfig("merge_job", true);
+        JobConfigService.MergedResult result = service.loadMergedConfig("merge_job");
 
         assertThat(result).isNotNull();
         assertThat(result.getGlobalConfig()).isNotNull();
@@ -44,7 +44,7 @@ class JobConfigServiceTest {
 
     @Test
     void loadJobConfig_loadsFromClasspath() throws IOException {
-        JobConfig config = service.loadJobConfig("merge_job", true);
+        JobConfig config = service.loadJobConfig("merge_job");
         assertThat(config).isNotNull();
         assertThat(config.getJob().getName()).isEqualTo("merge_job");
         assertThat(config.getRuntime().getTableConcurrency()).isEqualTo(10);

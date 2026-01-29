@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(mvn clean install:*)",
+      "Bash(mvn clean package:*)",
+      "Bash(curl:*)",
+      "Bash(mvn spring-boot:run:*)"
+    ]
+  }
+}
