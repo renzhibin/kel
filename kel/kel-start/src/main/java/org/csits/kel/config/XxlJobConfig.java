@@ -22,7 +22,7 @@ public class XxlJobConfig {
     @Value("${xxl.job.executor.appname}")
     private String appname;
 
-    @Value("${xxl.job.executor.address:}")
+    @Value("${xxl.job.executor.address:http://host.docker.internal:9999/}")
     private String address;
 
     @Value("${xxl.job.executor.ip:}")

@@ -1,0 +1,11 @@
+job:
+  type: "FILE_LOAD"
+  name: "bss_file_load"
+  description: "BSS 文件加载示例作业（从 work 中的 files 目录还原到本地 data 目录）"
+workDir: "work"
+exchangeDir: "exchange"
+# 目标目录，用于本地模拟：将卸载包解压后的 files 下文件复制到该目录
+targetDirectory: "data/bss_file_load/output"
+runtime:
+  table_concurrency: 1
+
