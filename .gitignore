@@ -16,3 +16,6 @@ kel/work/
 
 # xxl-job mysql data
 kel/deploy/xxl-job/mysql-data/
+
+# Kingbase data directory (runtime, binary)
+kel/kingbase-data/

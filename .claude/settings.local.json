@@ -7,7 +7,9 @@
       "Bash(mvn clean install:*)",
       "Bash(mvn clean package:*)",
       "Bash(curl:*)",
-      "Bash(mvn spring-boot:run:*)"
+      "Bash(mvn spring-boot:run:*)",
+      "Bash(docker exec:*)",
+      "Bash(psql:*)"
     ]
   }
 }
