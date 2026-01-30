@@ -137,6 +137,10 @@ The handler parses the parameter, loads the corresponding YAML config, and invok
 
 ## Development Notes
 
+**卸载与加载独立部署**：卸载侧与加载侧视为两个独立网络，不共享配置与数据目录。无 `source_extract_job` 配置。加载任务：不填 `sourceBatch` 时，根据本作业配置的 `input_directory` 在本机下扫描取最新批次；填则用该值。输入路径 = `input_directory` + "/" + 批次号，`input_directory` 必填。
+
+**CWD（当前工作目录）**：CWD = Current Working Directory，即进程启动时所在的目录。配置中的相对路径（如 `work_dir: "work"`、`extract_directory: "data/..."`）在解析时都相对于该目录。例如在项目根目录执行 `java -jar kel-start/target/kel-start-xxx.jar`，则 CWD 为项目根，`work` 会解析为「项目根/work」。
+
 **Database driver**: Currently uses PostgreSQL driver as a placeholder for Kingbase. Replace with official Kingbase driver when available (see `kel-server/pom.xml:34-39`).
 
 **Configuration profiles**: The project uses `dev` profile by default (`kel.conf.base-dir: classpath:conf/dev`). Add additional profiles (test, prod) by creating corresponding directories under `conf/`.

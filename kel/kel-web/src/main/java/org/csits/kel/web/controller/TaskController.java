@@ -1,5 +1,10 @@
 package org.csits.kel.web.controller;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,8 +13,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.csits.kel.dao.TaskExecutionEntity;
 import org.csits.kel.dao.TaskExecutionRepository;
+import org.csits.kel.server.dto.GlobalConfig;
+import org.csits.kel.server.dto.ManifestMetadata;
 import org.csits.kel.server.dto.TaskStatistics;
+import org.csits.kel.server.service.JobConfigService;
 import org.csits.kel.server.service.MetricsCollector;
+import org.csits.kel.server.service.ManifestService;
 import org.csits.kel.server.service.ProgressTracker;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +35,8 @@ public class TaskController {
     private final TaskExecutionRepository taskExecutionRepository;
     private final MetricsCollector metricsCollector;
     private final ProgressTracker progressTracker;
+    private final JobConfigService jobConfigService;
+    private final ManifestService manifestService;
 
     /**
      * 查询所有任务
@@ -34,15 +45,19 @@ public class TaskController {
     public ResponseEntity<Map<String, Object>> listTasks(
         @RequestParam(required = false) String jobCode,
         @RequestParam(required = false) String status,
+        @RequestParam(defaultValue = "0") int days,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size) {
 
         List<TaskExecutionEntity> allTasks = taskExecutionRepository.findAll();
 
+        LocalDateTime since = (days > 0) ? LocalDateTime.now().minusDays(days) : null;
+
         // 过滤
         List<TaskExecutionEntity> filtered = allTasks.stream()
             .filter(t -> jobCode == null || jobCode.equals(t.getJobCode()))
             .filter(t -> status == null || status.equals(t.getStatus()))
+            .filter(t -> since == null || (t.getStartTime() != null && !t.getStartTime().isBefore(since)))
             .collect(Collectors.toList());
 
         // 分页
@@ -102,13 +117,22 @@ public class TaskController {
      * 获取任务统计信息
      */
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
+    public ResponseEntity<Map<String, Object>> getStats(
+        @RequestParam(defaultValue = "0") int days) {
         List<TaskExecutionEntity> allTasks = taskExecutionRepository.findAll();
 
-        long total = allTasks.size();
-        long running = allTasks.stream().filter(t -> "RUNNING".equals(t.getStatus())).count();
-        long success = allTasks.stream().filter(t -> "SUCCESS".equals(t.getStatus())).count();
-        long failed = allTasks.stream().filter(t -> "FAILED".equals(t.getStatus())).count();
+        LocalDateTime since = (days > 0) ? LocalDateTime.now().minusDays(days) : null;
+        List<TaskExecutionEntity> filtered = allTasks;
+        if (since != null) {
+            filtered = allTasks.stream()
+                .filter(t -> t.getStartTime() != null && !t.getStartTime().isBefore(since))
+                .collect(Collectors.toList());
+        }
+
+        long total = filtered.size();
+        long running = filtered.stream().filter(t -> "RUNNING".equals(t.getStatus())).count();
+        long success = filtered.stream().filter(t -> "SUCCESS".equals(t.getStatus())).count();
+        long failed = filtered.stream().filter(t -> "FAILED".equals(t.getStatus())).count();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", total);
@@ -143,5 +167,31 @@ public class TaskController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * 获取任务对应的 manifest 内容（从工作目录 manifest.json 读取）
+     */
+    @GetMapping("/{id}/manifest")
+    public ResponseEntity<ManifestMetadata> getTaskManifest(@PathVariable Long id) {
+        return taskExecutionRepository.findById(id)
+            .flatMap(task -> {
+                try {
+                    GlobalConfig global = jobConfigService.loadGlobalConfig();
+                    String workDir = global.getExtract() != null && global.getExtract().getWorkDir() != null
+                        ? global.getExtract().getWorkDir()
+                        : "work";
+                    Path manifestPath = Paths.get(workDir, task.getJobCode(), task.getBatchNumber(), "manifest.json");
+                    if (!Files.isRegularFile(manifestPath)) {
+                        return java.util.Optional.<ManifestMetadata>empty();
+                    }
+                    return java.util.Optional.of(manifestService.parseManifest(manifestPath));
+                } catch (IOException e) {
+                    log.warn("读取 manifest 失败: taskId={}", id, e);
+                    return java.util.Optional.<ManifestMetadata>empty();
+                }
+            })
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
     }
 }

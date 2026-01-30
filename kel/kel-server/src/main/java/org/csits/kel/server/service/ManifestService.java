@@ -5,8 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +43,7 @@ public class ManifestService {
         // 基本信息
         manifest.setJobCode(context.getJobCode());
         manifest.setBatchNumber(context.getBatchNumber());
-        manifest.setTimestamp(DateTimeFormatter.ISO_INSTANT.format(Instant.now().atOffset(ZoneOffset.UTC)));
+        manifest.setTimestamp(ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
 
         // 压缩配置
         GlobalConfig.CompressionConfig compression = context.getGlobalConfig().getCompression();

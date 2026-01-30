@@ -25,8 +25,8 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
     private final JdbcTemplate jdbcTemplate;
 
     private static final String INSERT_SQL =
-        "INSERT INTO manual_export (job_code, table_name, mode, status, task_id, requested_by) " +
-        "VALUES (?, ?, ?, ?, ?, ?)";
+        "INSERT INTO manual_export (type, job_code, table_name, mode, source_batch, status, task_id, requested_by) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String UPDATE_SQL =
         "UPDATE manual_export SET status = ?, task_id = ? WHERE id = ?";
     private static final String SELECT_BY_ID_SQL =
@@ -46,12 +46,15 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
                 java.sql.PreparedStatement ps = connection.prepareStatement(INSERT_SQL, new String[]{"id"});
-                ps.setString(1, entity.getJobCode());
-                ps.setString(2, entity.getTableName());
-                ps.setString(3, entity.getMode());
-                ps.setString(4, entity.getStatus());
-                ps.setObject(5, entity.getTaskId());
-                ps.setString(6, entity.getRequestedBy());
+                String type = entity.getType() != null ? entity.getType() : "EXPORT";
+                ps.setString(1, type);
+                ps.setString(2, entity.getJobCode());
+                ps.setString(3, entity.getTableName());
+                ps.setString(4, entity.getMode());
+                ps.setString(5, entity.getSourceBatch());
+                ps.setString(6, entity.getStatus());
+                ps.setObject(7, entity.getTaskId());
+                ps.setString(8, entity.getRequestedBy());
                 return ps;
             }, keyHolder);
             if (keyHolder.getKey() != null) {
@@ -96,9 +99,11 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
         public ManualExportEntity mapRow(ResultSet rs, int rowNum) throws SQLException {
             ManualExportEntity e = new ManualExportEntity();
             e.setId(rs.getLong("id"));
+            e.setType(hasColumn(rs, "type") ? nullToDefault(rs.getString("type"), "EXPORT") : "EXPORT");
             e.setJobCode(rs.getString("job_code"));
             e.setTableName(rs.getString("table_name"));
             e.setMode(rs.getString("mode"));
+            e.setSourceBatch(hasColumn(rs, "source_batch") ? rs.getString("source_batch") : null);
             e.setStatus(rs.getString("status"));
             long taskId = rs.getLong("task_id");
             e.setTaskId(rs.wasNull() ? null : taskId);
@@ -106,6 +111,18 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
             e.setRequestedAt(at != null ? at.toLocalDateTime() : null);
             e.setRequestedBy(rs.getString("requested_by"));
             return e;
+        }
+
+        private static String nullToDefault(String v, String def) {
+            return v != null && !v.isEmpty() ? v : def;
+        }
+
+        private static boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
+            java.sql.ResultSetMetaData meta = rs.getMetaData();
+            for (int i = 1; i <= meta.getColumnCount(); i++) {
+                if (columnName.equalsIgnoreCase(meta.getColumnName(i))) return true;
+            }
+            return false;
         }
     }
 }

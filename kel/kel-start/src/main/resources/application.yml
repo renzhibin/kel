@@ -1,7 +1,20 @@
-# 默认使用数据库持久化；DataSource 由 application-database.yml 提供
+# 仅支持数据库持久化。使用前请先：
+#   1) 创建库与用户：createdb kel && psql -d postgres -c "CREATE USER kel WITH PASSWORD 'kel' LOGIN;" -c "GRANT ALL ON DATABASE kel TO kel;" -c "ALTER DATABASE kel TO kel;"
+#   2) 首次建表：PGPASSWORD=kel psql -h 127.0.0.1 -U kel -d kel -f kel-start/src/main/resources/schema.sql
+#   3) 启动后到管控台「作业执行」点「导入配置到 DB」写入 job_config。
 spring:
-  profiles:
-    active: database
+  autoconfigure:
+    exclude: []   # 启用 JDBC 与 DataSource
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/kel?currentSchema=kel
+    username: kel
+    password: kel
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: false
 
 server:
   port: 8082
@@ -15,7 +28,6 @@ xxl:
     admin:
       addresses: http://localhost:8080/xxl-job-admin
     executor:
-      enabled: true   # 未启动调度中心时设为 false，避免 Connection refused 注册失败日志
       appname: kel-executor
       # address 留空时自动注册为 ip:port
       address:

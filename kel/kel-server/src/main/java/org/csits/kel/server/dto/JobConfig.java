@@ -2,6 +2,7 @@ package org.csits.kel.server.dto;
 
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -21,6 +22,7 @@ public class JobConfig {
     @JsonProperty("extract_database")
     private ExtractDatabaseConfig extractDatabase;
 
+    @JsonProperty("target_database")
     private TargetDatabaseConfig targetDatabase;
 
     private String workDir;
@@ -35,6 +37,7 @@ public class JobConfig {
 
     private RuntimeConfig runtime;
 
+    @JsonProperty("input_directory")
     private String inputDirectory;
 
     private String extractDirectory;
@@ -72,8 +75,10 @@ public class JobConfig {
         @JsonProperty("password")
         private String password;
 
-        @JsonProperty("version")
-        private String version;
+        /** 数据库版本（如 V8R6），与全局 extract.database_version 同名；不填时由合并逻辑用全局值补全。 */
+        @JsonProperty("database_version")
+        @JsonAlias("version")
+        private String databaseVersion;
     }
 
     @Data
@@ -88,6 +93,11 @@ public class JobConfig {
         private String user;
 
         private String password;
+
+        /** 数据库版本（如 V8R6），与全局 extract.database_version 同名；不填时由合并逻辑用全局值补全。 */
+        @JsonProperty("database_version")
+        @JsonAlias("version")
+        private String databaseVersion;
     }
 
     @Data

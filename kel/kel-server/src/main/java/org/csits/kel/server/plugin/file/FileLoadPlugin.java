@@ -5,7 +5,10 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -55,13 +58,19 @@ public class FileLoadPlugin implements LoadPlugin {
         Path targetRoot = Paths.get(targetDirStr);
         Files.createDirectories(targetRoot);
         List<Path> files = listFilesRecursively(filesDir);
+        List<Map<String, String>> filePathMappings = new ArrayList<>();
         int copied = 0;
         for (Path file : files) {
             Path relative = filesDir.relativize(file);
             Path target = targetRoot.resolve(relative.toString());
             fileSystemManager.copyFile(file, target);
+            Map<String, String> mapping = new LinkedHashMap<>();
+            mapping.put("source", file.toAbsolutePath().toString());
+            mapping.put("target", target.toAbsolutePath().toString());
+            filePathMappings.add(mapping);
             copied++;
         }
+        ctx.setAttribute("filePathMappings", filePathMappings);
         log.info("作业 {} 文件还原完成，共 {} 个文件到 {}", ctx.getJobCode(), copied, targetRoot);
     }
 

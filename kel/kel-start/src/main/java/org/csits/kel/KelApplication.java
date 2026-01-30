@@ -38,7 +38,7 @@ public class KelApplication implements CommandLineRunner {
             }
         }
         if (jobCode == null || jobCode.isEmpty()) {
-            log.warn("未指定 jobCode，当前启动不执行任何任务");
+            log.info("未指定 jobCode，以常驻模式启动");
             return;
         }
         JobConfigService.MergedResult mergedConfig =

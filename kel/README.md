@@ -63,6 +63,14 @@ Kel 目前有四种作业类型（`JobConfig.job.type`，见 `JobType` 枚举）
 - `load:<jobCode>`：执行对应作业的加载流程（`executeLoad`）
 - `<jobCode>`：等价于 `extract:<jobCode>`（默认卸载）
 
+### 卸载与加载的部署关系
+
+卸载侧与加载侧视为**两个独立网络**：不共享配置、不共享数据目录。因此：
+
+- **无 `source_extract_job` 配置**：加载作业不会从“源卸载作业”自动取批次或路径，相关配置与逻辑已移除。
+- **加载任务批次号**：不填时，根据**本作业配置**的 `input_directory` 在本机下扫描，取最新批次目录（目录名格式 `yyyyMMdd_NNN`）；填写则加载指定批次。
+- **加载任务输入路径**：`input_directory` 在作业配置中必填（包所在根目录），实际路径 = `input_directory + "/" + 批次号`。生产环境填加载侧路径；单机联调可与卸载侧目录名一致（如 `exchange/bss_file_extract`），但仍是本侧配置，与卸载侧无共享。
+
 示例：demo 作业（`conf/dev/jobs/demo_extract.yaml`，`job.type=EXTRACT_KINGBASE`）：
 
 - 卸载 demo（EXTRACT_KINGBASE）：执行器选 `kel-executor`，`JobHandler=kelJobHandler`，执行参数 `extract:demo`

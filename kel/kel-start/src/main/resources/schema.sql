@@ -1,5 +1,5 @@
 -- Kel 元数据库 schema：实例名 kel，所有表置于 kel schema 下。
--- 与 kel-dao 中 schema.sql 保持一致；database profile 启动时由 Spring 执行。
+-- 与 kel-dao 中 schema.sql 保持一致；启动时由 Spring 执行。
 CREATE SCHEMA IF NOT EXISTS kel;
 
 -- 任务执行表（含执行日志：execution_log 合并原 task_execution_log）
@@ -51,12 +51,14 @@ CREATE TABLE IF NOT EXISTS kel.job_config (
 );
 CREATE INDEX IF NOT EXISTS idx_job_config_config_key ON kel.job_config(config_key);
 
--- 人工表级导出记录
+-- 人工表级导出/加载记录（type: EXPORT=卸载单表, LOAD=加载单表）
 CREATE TABLE IF NOT EXISTS kel.manual_export (
     id BIGSERIAL PRIMARY KEY,
+    type VARCHAR(20) NOT NULL DEFAULT 'EXPORT',
     job_code VARCHAR(100) NOT NULL,
     table_name VARCHAR(200) NOT NULL,
     mode VARCHAR(20) NOT NULL,
+    source_batch VARCHAR(50),
     status VARCHAR(20) NOT NULL,
     task_id BIGINT,
     requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -67,6 +69,17 @@ CREATE INDEX IF NOT EXISTS idx_manual_export_job_code ON kel.manual_export(job_c
 CREATE INDEX IF NOT EXISTS idx_manual_export_table_name ON kel.manual_export(table_name);
 CREATE INDEX IF NOT EXISTS idx_manual_export_status ON kel.manual_export(status);
 CREATE INDEX IF NOT EXISTS idx_manual_export_requested_at ON kel.manual_export(requested_at);
+CREATE INDEX IF NOT EXISTS idx_manual_export_type ON kel.manual_export(type);
+-- 兼容旧库：若无 type/source_batch 列则添加
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='kel' AND table_name='manual_export' AND column_name='type') THEN
+        ALTER TABLE kel.manual_export ADD COLUMN type VARCHAR(20) NOT NULL DEFAULT 'EXPORT';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='kel' AND table_name='manual_export' AND column_name='source_batch') THEN
+        ALTER TABLE kel.manual_export ADD COLUMN source_batch VARCHAR(50);
+    END IF;
+END $$;
 
 -- 更新时间触发器函数（放在 public 以便复用）
 CREATE OR REPLACE FUNCTION update_updated_at_column()

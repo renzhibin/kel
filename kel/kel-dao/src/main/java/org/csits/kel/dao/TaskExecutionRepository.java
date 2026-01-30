@@ -1,5 +1,6 @@
 package org.csits.kel.dao;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,5 +43,10 @@ public interface TaskExecutionRepository {
      * 统计任务执行记录总数
      */
     long count();
+
+    /**
+     * 统计某时间区间内创建的任务数（startInclusive <= created_at < endExclusive）
+     */
+    long countByCreatedAtBetween(LocalDateTime startInclusive, LocalDateTime endExclusive);
 }
 

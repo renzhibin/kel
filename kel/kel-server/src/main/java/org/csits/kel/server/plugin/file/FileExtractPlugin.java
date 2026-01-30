@@ -1,11 +1,13 @@
 package org.csits.kel.server.plugin.file;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.csits.kel.manager.filesystem.FileSystemManager;
@@ -58,6 +60,7 @@ public class FileExtractPlugin implements ExtractPlugin {
             log.info("作业 {} 未配置 extract_tasks，跳过文件采集", ctx.getJobCode());
             return;
         }
+        List<Map<String, String>> extractPathMappings = new ArrayList<>();
         for (JobConfig.ExtractTaskConfig task : tasks) {
             JobConfig.FileAttribute attr = task.getAttribute();
             String pattern = (attr != null && attr.getFilePattern() != null) ? attr.getFilePattern() : "*";
@@ -75,10 +78,15 @@ public class FileExtractPlugin implements ExtractPlugin {
                 Path relative = root.relativize(file);
                 Path target = filesDir.resolve(relative.toString());
                 fileSystemManager.copyFile(file, target);
+                Map<String, String> mapping = new LinkedHashMap<>();
+                mapping.put("source", file.toAbsolutePath().toString());
+                mapping.put("target", target.toAbsolutePath().toString());
+                extractPathMappings.add(mapping);
                 copied++;
             }
             log.info("作业 {} 文件采集完成，匹配 {} 个文件，复制 {} 个到 {}", ctx.getJobCode(), candidates.size(), copied, filesDir);
         }
+        ctx.setAttribute("extractPathMappings", extractPathMappings);
     }
 
     private Path resolveWorkDir(TaskExecutionContext ctx) {

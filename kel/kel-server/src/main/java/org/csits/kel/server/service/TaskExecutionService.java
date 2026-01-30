@@ -2,17 +2,23 @@ package org.csits.kel.server.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.csits.kel.dao.TaskExecutionEntity;
 import org.csits.kel.dao.TaskExecutionRepository;
 import org.csits.kel.dao.TaskExecutionStatus;
-import org.csits.kel.manager.batch.BatchNumberGenerator;
 import org.csits.kel.manager.compression.CompressionManager;
 import org.csits.kel.manager.filesystem.FileSystemManager;
 import org.csits.kel.manager.security.SmCryptoManager;
@@ -22,6 +28,7 @@ import org.csits.kel.server.dto.GlobalConfig;
 import org.csits.kel.server.dto.JobConfig;
 import org.csits.kel.server.dto.ManifestMetadata;
 import org.csits.kel.server.dto.TaskExecutionContext;
+import org.csits.kel.server.plugin.kingbase.KingbaseExtractPlugin;
 import org.csits.kel.server.worker.core.ExtractPluginRegistry;
 import org.csits.kel.server.worker.core.LoadPluginRegistry;
 import org.springframework.stereotype.Service;
@@ -38,12 +45,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TaskExecutionService {
 
+    private static final int MAX_PATH_LOG_ENTRIES = 500;
+
     private final TaskExecutionRepository taskExecutionRepository;
     private final FileSystemManager fileSystemManager;
     private final CompressionManager compressionManager;
     private final SmCryptoManager smCryptoManager;
     private final TaskLogger taskLogger;
-    private final BatchNumberGenerator batchNumberGenerator;
     private final ExtractPluginRegistry extractPluginRegistry;
     private final LoadPluginRegistry loadPluginRegistry;
     private final ManifestService manifestService;
@@ -56,7 +64,39 @@ public class TaskExecutionService {
 
     public TaskExecutionContext createContext(String jobCode, GlobalConfig globalConfig,
                                               JobConfig jobConfig) {
-        String batchNumber = batchNumberGenerator.nextBatchNumber();
+        return createContext(jobCode, globalConfig, jobConfig, null);
+    }
+
+    /**
+     * 创建任务上下文。
+     * - 卸载：batchNumberOverride 忽略，按当日执行数+1 生成（yyyyMMdd_NNN）。
+     * - 加载：未填 sourceBatch 时，根据本作业配置的 input_directory 在本机下扫描取最新批次；填写则用该值。
+     */
+    public TaskExecutionContext createContext(String jobCode, GlobalConfig globalConfig,
+                                              JobConfig jobConfig, String batchNumberOverride) {
+        String batchNumber;
+        boolean isLoad = jobCode != null && jobCode.endsWith("_load");
+        if (isLoad) {
+            if (batchNumberOverride != null && !batchNumberOverride.trim().isEmpty()) {
+                batchNumber = batchNumberOverride.trim();
+            } else {
+                batchNumber = resolveLatestBatchFromInputDir(jobConfig);
+                if (batchNumber == null) {
+                    String inputDirStr = jobConfig.getInputDirectory();
+                    String pathHint = (inputDirStr != null && !inputDirStr.trim().isEmpty())
+                        ? " 解析路径: " + Paths.get(inputDirStr.trim()).toAbsolutePath()
+                        : "（未配置 input_directory）";
+                    throw new IllegalArgumentException(
+                        "未指定 sourceBatch 且根据加载配置的 input_directory 下未发现可用批次目录（目录名须为 yyyyMMdd_NNN），请填写源批次号或确认该路径下已有批次包。" + pathHint);
+                }
+            }
+        } else {
+            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+            LocalDateTime todayEnd = todayStart.plusDays(1);
+            long todayCount = taskExecutionRepository.countByCreatedAtBetween(todayStart, todayEnd);
+            String datePrefix = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+            batchNumber = datePrefix + "_" + String.format("%03d", todayCount + 1);
+        }
         TaskExecutionEntity entity = new TaskExecutionEntity();
         entity.setJobCode(jobCode);
         entity.setBatchNumber(batchNumber);
@@ -128,7 +168,8 @@ public class TaskExecutionService {
         metricsCollector.initTaskStatistics(taskId, context.getBatchNumber());
 
         progressTracker.updateExtractProgress(taskId, ProgressTracker.ExtractStage.INIT, 0);
-        taskLogger.logProgress(taskId, "INIT", 0, "初始化任务");
+        String extractBatch = context.getBatchNumber();
+        taskLogger.logProgress(taskId, "INIT", 0, "初始化卸载任务，批次号=" + (extractBatch != null ? extractBatch : "—"));
         metricsCollector.recordStageStart(taskId, "INIT");
         Path workDirPath = initWorkDir(context, true);
         metricsCollector.recordStageEnd(taskId, "INIT", "SUCCESS", "初始化完成");
@@ -140,6 +181,8 @@ public class TaskExecutionService {
         ExtractPlugin plugin = extractPluginRegistry.select(context);
         if (plugin != null) {
             plugin.extract(context);
+            logExportTableStats(taskId, context.getAttribute("exportResults"));
+            logFilePathMappings(taskId, context.getAttribute("extractPathMappings"), "EXPORT", 50, "源: ", " -> 目标: ");
             taskLogger.logProgress(taskId, "EXPORT", 50, "数据导出完成");
             metricsCollector.recordStageEnd(taskId, "EXPORT", "SUCCESS", "数据导出完成");
         } else {
@@ -239,38 +282,42 @@ public class TaskExecutionService {
         metricsCollector.initTaskStatistics(taskId, context.getBatchNumber());
 
         progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.INIT, 0);
-        taskLogger.logProgress(taskId, "INIT", 0, "初始化加载任务");
+        String batchNumber = context.getBatchNumber();
+        taskLogger.logProgress(taskId, "INIT", 0, "初始化加载任务，批次号=" + (batchNumber != null ? batchNumber : "—"));
         metricsCollector.recordStageStart(taskId, "INIT");
         Path workDirPath = initWorkDir(context, false);
         metricsCollector.recordStageEnd(taskId, "INIT", "SUCCESS", "初始化完成");
         progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.INIT, 100);
 
+        // 解析加载输入目录：路径 = input_directory + "/" + batchNumber（批次号由调用方显式传入）
+        Path loadInputDir = resolveLoadInputDir(context);
+        if (loadInputDir == null) {
+            throw new RuntimeException("加载任务未配置 input_directory（包所在根目录，生产侧路径或与卸载一致如 exchange/bss_file_extract）");
+        }
+        taskLogger.logProgress(taskId, "INIT", 0, "输入目录=" + loadInputDir);
+
         // 如果启用加密，先解密
-        String inputDirStr = context.getJobConfig().getInputDirectory();
-        if (inputDirStr != null && !inputDirStr.isEmpty()) {
-            Path inputDir = Paths.get(inputDirStr);
-            GlobalConfig globalConfigForDecrypt = context.getGlobalConfig();
-            if (globalConfigForDecrypt.getSecurity() != null && Boolean.TRUE.equals(globalConfigForDecrypt.getSecurity().getEnableEncryption())) {
-                String key = globalConfigForDecrypt.getSecurity().getSm4Key();
-                if (key != null && !key.isEmpty()) {
-                    progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.DECRYPT, 0);
-                    metricsCollector.recordStageStart(taskId, "DECRYPT");
-                    long decryptStart = System.currentTimeMillis();
-                    decryptFiles(inputDir, key);
-                    long decryptDuration = System.currentTimeMillis() - decryptStart;
-                    metricsCollector.recordEncryptionStats(taskId, decryptDuration);
-                    taskLogger.logProgress(taskId, "DECRYPT", 10, "文件解密完成");
-                    metricsCollector.recordStageEnd(taskId, "DECRYPT", "SUCCESS", "解密完成");
-                    progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.DECRYPT, 100);
-                }
+        GlobalConfig globalConfigForDecrypt = context.getGlobalConfig();
+        if (globalConfigForDecrypt.getSecurity() != null && Boolean.TRUE.equals(globalConfigForDecrypt.getSecurity().getEnableEncryption())) {
+            String key = globalConfigForDecrypt.getSecurity().getSm4Key();
+            if (key != null && !key.isEmpty()) {
+                progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.DECRYPT, 0);
+                metricsCollector.recordStageStart(taskId, "DECRYPT");
+                long decryptStart = System.currentTimeMillis();
+                decryptFiles(loadInputDir, key);
+                long decryptDuration = System.currentTimeMillis() - decryptStart;
+                metricsCollector.recordEncryptionStats(taskId, decryptDuration);
+                taskLogger.logProgress(taskId, "DECRYPT", 10, "文件解密完成");
+                metricsCollector.recordStageEnd(taskId, "DECRYPT", "SUCCESS", "解密完成");
+                progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.DECRYPT, 100);
             }
         }
 
-        // 从 input_directory 解压到 workDir（自动处理分片合并）
+        // 从输入目录解压到 workDir（自动处理分片合并）
         progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.UNPACK, 0);
         metricsCollector.recordStageStart(taskId, "UNPACK");
-        unpackToWorkDir(context, workDirPath);
-        taskLogger.logProgress(taskId, "UNPACK", 30, "解压完成，工作目录=" + workDirPath);
+        compressionManager.mergeAndDecompress(loadInputDir, workDirPath);
+        taskLogger.logProgress(taskId, "UNPACK", 30, "解压完成，工作目录=" + workDirPath + "，批次号=" + (batchNumber != null ? batchNumber : "—"));
         metricsCollector.recordStageEnd(taskId, "UNPACK", "SUCCESS", "解压完成");
         progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.UNPACK, 100);
 
@@ -297,6 +344,8 @@ public class TaskExecutionService {
         LoadPlugin plugin = loadPluginRegistry.select(context);
         if (plugin != null) {
             plugin.load(context);
+            logLoadTableStats(taskId, context.getAttribute("loadTableStats"));
+            logFilePathMappings(taskId, context.getAttribute("filePathMappings"), "LOAD", 80, "源: ", " -> 目标: ");
             taskLogger.logProgress(taskId, "LOAD", 80, "数据加载完成");
             metricsCollector.recordStageEnd(taskId, "LOAD", "SUCCESS", "数据加载完成");
         } else {
@@ -313,19 +362,112 @@ public class TaskExecutionService {
         taskStateMachine.markSuccess(taskId, "加载任务完成");
     }
 
-    private void unpackToWorkDir(TaskExecutionContext context, Path workDir) throws IOException {
-        JobConfig jobConfig = context.getJobConfig();
-        String inputDirStr = jobConfig.getInputDirectory();
-        if (inputDirStr == null || inputDirStr.isEmpty()) {
+    @SuppressWarnings("unchecked")
+    private void logFilePathMappings(Long taskId, Object attr, String stage, int progress,
+                                     String sourcePrefix, String targetSuffix) {
+        if (attr == null || !(attr instanceof List)) {
             return;
         }
-        Path inputDir = Paths.get(inputDirStr);
-        if (Files.notExists(inputDir) || !Files.isDirectory(inputDir)) {
+        List<Map<String, String>> list = (List<Map<String, String>>) attr;
+        if (list.isEmpty()) {
             return;
         }
+        int size = list.size();
+        int toLog = Math.min(size, MAX_PATH_LOG_ENTRIES);
+        for (int i = 0; i < toLog; i++) {
+            Map<String, String> m = list.get(i);
+            String source = m != null ? m.get("source") : null;
+            String target = m != null ? m.get("target") : null;
+            if (source != null && target != null) {
+                taskLogger.logProgress(taskId, stage, progress, sourcePrefix + source + targetSuffix + target);
+            }
+        }
+        if (size > MAX_PATH_LOG_ENTRIES) {
+            taskLogger.logProgress(taskId, stage, progress,
+                "（共 " + size + " 个文件，仅展示前 " + MAX_PATH_LOG_ENTRIES + " 条）");
+        }
+    }
 
-        // 使用新的合并解压方法（自动处理分片）
-        compressionManager.mergeAndDecompress(inputDir, workDir);
+    /** 将卸载插件写入的 exportResults 记录到执行日志：每表行数、合计行数、表数量。 */
+    private void logExportTableStats(Long taskId, Object exportResultsObj) {
+        if (exportResultsObj == null || !(exportResultsObj instanceof List)) {
+            return;
+        }
+        List<?> list = (List<?>) exportResultsObj;
+        long total = 0;
+        for (Object o : list) {
+            if (o instanceof KingbaseExtractPlugin.TableExportResult) {
+                KingbaseExtractPlugin.TableExportResult r = (KingbaseExtractPlugin.TableExportResult) o;
+                taskLogger.logProgress(taskId, "EXPORT", 50, "卸载表 " + r.getTableName() + " " + r.getRowCount() + " 行");
+                total += r.getRowCount();
+            }
+        }
+        if (!list.isEmpty()) {
+            taskLogger.logProgress(taskId, "EXPORT", 50, "卸载合计 " + total + " 行，共 " + list.size() + " 张表");
+        }
+    }
+
+    /** 将加载插件写入的 loadTableStats 记录到执行日志：每表写入行数、合计行数、表数量。 */
+    @SuppressWarnings("unchecked")
+    private void logLoadTableStats(Long taskId, Object loadTableStatsObj) {
+        if (loadTableStatsObj == null || !(loadTableStatsObj instanceof Map)) {
+            return;
+        }
+        Map<String, Long> stats = (Map<String, Long>) loadTableStatsObj;
+        if (stats.isEmpty()) {
+            return;
+        }
+        long total = 0;
+        for (Map.Entry<String, Long> e : stats.entrySet()) {
+            String table = e.getKey();
+            long rows = e.getValue() != null ? e.getValue() : 0;
+            total += rows;
+            taskLogger.logProgress(taskId, "LOAD", 80, "加载表 " + table + " 写入 " + rows + " 行");
+        }
+        taskLogger.logProgress(taskId, "LOAD", 80, "加载合计 " + total + " 行，共 " + stats.size() + " 张表");
+    }
+
+    /** 批次目录名格式：yyyyMMdd_NNN */
+    private static final Pattern BATCH_DIR_PATTERN = Pattern.compile("\\d{8}_\\d{3}");
+
+    /**
+     * 根据加载作业配置的 input_directory 在本机下扫描，取最新批次目录名（按目录名降序取第一个）。
+     * 未配置或目录不存在/无匹配子目录时返回 null。
+     */
+    private String resolveLatestBatchFromInputDir(JobConfig jobConfig) {
+        String inputDirStr = jobConfig.getInputDirectory();
+        if (inputDirStr == null || inputDirStr.trim().isEmpty()) {
+            return null;
+        }
+        Path rootDir = Paths.get(inputDirStr.trim());
+        if (!Files.exists(rootDir) || !Files.isDirectory(rootDir)) {
+            return null;
+        }
+        try {
+            List<String> batchDirs = Files.list(rootDir)
+                .filter(Files::isDirectory)
+                .map(Path::getFileName)
+                .map(Path::toString)
+                .filter(name -> BATCH_DIR_PATTERN.matcher(name).matches())
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
+            return batchDirs.isEmpty() ? null : batchDirs.get(0);
+        } catch (IOException e) {
+            log.warn("扫描 input_directory 取最新批次失败: {}", rootDir, e);
+            return null;
+        }
+    }
+
+    /**
+     * 解析加载任务的输入目录：input_directory 为包所在根目录（必填），路径 = input_directory + "/" + batchNumber。
+     * 生产与卸载分离时填加载侧路径；单机可与卸载一致，如 input_directory: "exchange/bss_file_extract"。
+     */
+    private Path resolveLoadInputDir(TaskExecutionContext context) {
+        String inputDirStr = context.getJobConfig().getInputDirectory();
+        if (inputDirStr == null || inputDirStr.trim().isEmpty()) {
+            return null;
+        }
+        return Paths.get(inputDirStr.trim()).resolve(context.getBatchNumber());
     }
 
     private Path initWorkDir(TaskExecutionContext context, boolean extract) throws IOException {

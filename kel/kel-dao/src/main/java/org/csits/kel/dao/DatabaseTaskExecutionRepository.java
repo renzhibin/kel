@@ -27,11 +27,11 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
     private static final String INSERT_SQL =
         "INSERT INTO task_execution (job_code, batch_number, status, node_name, config_snapshot, " +
         "progress, current_stage, error_message, start_time, end_time, statistics, execution_log) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)";
 
     private static final String UPDATE_SQL =
         "UPDATE task_execution SET status = ?, node_name = ?, config_snapshot = ?, " +
-        "progress = ?, current_stage = ?, error_message = ?, start_time = ?, end_time = ?, statistics = ?, execution_log = ? " +
+        "progress = ?, current_stage = ?, error_message = ?, start_time = ?, end_time = ?, statistics = ?, execution_log = ?::jsonb " +
         "WHERE id = ?";
 
     private static final String SELECT_BY_ID_SQL =
@@ -51,6 +51,9 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
 
     private static final String COUNT_SQL =
         "SELECT COUNT(*) FROM task_execution";
+
+    private static final String COUNT_BY_CREATED_AT_SQL =
+        "SELECT COUNT(*) FROM task_execution WHERE created_at >= ? AND created_at < ?";
 
     @Override
     public TaskExecutionEntity save(TaskExecutionEntity entity) {
@@ -153,6 +156,17 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
     @Override
     public long count() {
         Long count = jdbcTemplate.queryForObject(COUNT_SQL, Long.class);
+        return count != null ? count : 0;
+    }
+
+    @Override
+    public long countByCreatedAtBetween(LocalDateTime startInclusive, LocalDateTime endExclusive) {
+        Long count = jdbcTemplate.queryForObject(
+            COUNT_BY_CREATED_AT_SQL,
+            Long.class,
+            Timestamp.valueOf(startInclusive),
+            Timestamp.valueOf(endExclusive)
+        );
         return count != null ? count : 0;
     }
 

@@ -80,8 +80,9 @@ public class GlobalConfig {
         private String sm4Key;
 
         /**
-         * 是否启用加密。
+         * 是否启用加密。YAML 中为 enable_encryption。
          */
+        @JsonProperty("enable_encryption")
         private Boolean enableEncryption;
     }
 

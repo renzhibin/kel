@@ -6,6 +6,7 @@
     <title>KEL管控中心</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
     <style>
@@ -37,10 +38,31 @@
         .table-hover tbody tr:hover {
             background-color: #f8f9fa;
         }
+        .config-spec-body { font-size: 0.95rem; }
+        .config-spec-body h1 { font-size: 1.5rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .config-spec-body h2 { font-size: 1.25rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .config-spec-body h3 { font-size: 1.1rem; margin-top: 0.75rem; margin-bottom: 0.35rem; }
+        .config-spec-body table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+        .config-spec-body th, .config-spec-body td { border: 1px solid #dee2e6; padding: 0.35rem 0.5rem; text-align: left; }
+        .config-spec-body th { background-color: #f8f9fa; }
+        .config-spec-body hr { margin: 1rem 0; border: 0; border-top: 1px solid #dee2e6; }
+        .config-spec-body ul { padding-left: 1.5rem; margin-bottom: 0.5rem; }
         .btn-sm {
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
         }
+        .sub-nav {
+            background: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.5rem 0;
+        }
+        .sub-nav .nav-link {
+            color: #495057;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.25rem;
+        }
+        .sub-nav .nav-link:hover { background: #dee2e6; color: #0d6efd; }
+        .sub-nav .nav-link.active { background: #0d6efd; color: #fff; }
     </style>
 </head>
 <body>
@@ -57,33 +79,18 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav">
                         <li class="nav-item">
-                            <a class="nav-link" :class="{active: currentView === 'dashboard'}" @click="currentView = 'dashboard'" href="#">
-                                <i class="bi bi-speedometer2"></i> 仪表盘
+                            <a class="nav-link" :class="{active: currentView === 'monitor'}" @click="navTo('monitor','overview')" href="#">
+                                <i class="bi bi-graph-up"></i> 作业监控
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" :class="{active: currentView === 'tasks'}" @click="currentView = 'tasks'" href="#">
-                                <i class="bi bi-list-task"></i> 任务管理
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" :class="{active: currentView === 'jobs'}" @click="currentView = 'jobs'" href="#">
-                                <i class="bi bi-play-circle"></i> 作业执行
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" :class="{active: currentView === 'jobConfig'}" @click="currentView = 'jobConfig'; loadJobConfigs()" href="#">
+                            <a class="nav-link" :class="{active: currentView === 'config'}" @click="navTo('config','list'); loadJobConfigs()" href="#">
                                 <i class="bi bi-file-earmark-text"></i> 作业配置
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" :class="{active: currentView === 'tableExport'}" @click="currentView = 'tableExport'; loadConfigKeys(); loadManualExports()" href="#">
-                                <i class="bi bi-table"></i> 表级导出
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" :class="{active: currentView === 'system'}" @click="currentView = 'system'" href="#">
-                                <i class="bi bi-gear"></i> 系统监控
+                            <a class="nav-link" :class="{active: currentView === 'ops'}" @click="navTo('ops','execute'); loadConfigKeys()" href="#">
+                                <i class="bi bi-tools"></i> 作业运维
                             </a>
                         </li>
                     </ul>
@@ -91,10 +98,38 @@
             </div>
         </nav>
 
+        <!-- 二级导航：排在下面可选的子菜单 -->
+        <div class="sub-nav" v-if="currentView === 'monitor'">
+            <div class="container-fluid">
+                <ul class="nav">
+                    <li class="nav-item"><a class="nav-link" :class="{active: monitorSub === 'overview'}" @click="navTo('monitor','overview')" href="#">总览</a></li>
+                    <li class="nav-item"><a class="nav-link" :class="{active: monitorSub === 'taskList'}" @click="navTo('monitor','taskList'); loadConfigKeys()" href="#">任务列表</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="sub-nav" v-if="currentView === 'ops'">
+            <div class="container-fluid">
+                <ul class="nav">
+                    <li class="nav-item"><a class="nav-link" :class="{active: opsSub === 'execute'}" @click="navTo('ops','execute'); loadConfigKeys()" href="#">作业执行</a></li>
+                    <li class="nav-item"><a class="nav-link" :class="{active: opsSub === 'tableExport'}" @click="navTo('ops','tableExport'); loadTableExportConfigKeys(); loadTableLoadConfigKeys(); loadManualExports()" href="#">表级导出</a></li>
+                    <li class="nav-item"><a class="nav-link" :class="{active: opsSub === 'system'}" @click="navTo('ops','system')" href="#">系统监控</a></li>
+                </ul>
+            </div>
+        </div>
+
         <div class="container-fluid mt-4">
-            <!-- 仪表盘视图 -->
-            <div v-if="currentView === 'dashboard'">
-                <h2 class="mb-4">仪表盘</h2>
+            <!-- 作业监控 - 总览 -->
+            <div v-if="currentView === 'monitor' && monitorSub === 'overview'">
+                <h2 class="mb-4">总览</h2>
+                <div class="mb-3">
+                    <label class="form-label me-2">时间范围</label>
+                    <select class="form-select form-select-sm d-inline-block" style="width: auto;" v-model="overviewDays" @change="loadStats(); loadRecentTasks()">
+                        <option :value="1">最近 1 天</option>
+                        <option :value="3">最近 3 天</option>
+                        <option :value="7">最近 7 天</option>
+                        <option :value="0">全部</option>
+                    </select>
+                </div>
 
                 <!-- 统计卡片 -->
                 <div class="row mb-4">
@@ -145,7 +180,9 @@
                             <tbody>
                                 <tr v-for="task in recentTasks" :key="task.id">
                                     <td>{{ task.id }}</td>
-                                    <td>{{ task.jobCode }}</td>
+                                    <td>
+                                        <span class="text-primary" style="cursor:pointer" @click="goToConfig(task.jobCode)" :title="'去配置'">{{ task.jobCode }}</span>
+                                    </td>
                                     <td>{{ task.batchNumber }}</td>
                                     <td>
                                         <span class="badge badge-status" :class="getStatusClass(task.status)">
@@ -162,9 +199,8 @@
                                     </td>
                                     <td>{{ formatDate(task.startTime) }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-info" @click="viewTaskDetail(task.id)">
-                                            <i class="bi bi-eye"></i> 详情
-                                        </button>
+                                        <a href="#" class="btn btn-sm btn-outline-primary me-1" @click.prevent="goToOpsExecute(task.jobCode)">执行</a>
+                                        <button class="btn btn-sm btn-info" @click="viewTaskDetail(task.id)"><i class="bi bi-eye"></i> 详情</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -173,30 +209,35 @@
                 </div>
             </div>
 
-            <!-- 任务管理视图 -->
-            <div v-if="currentView === 'tasks'">
-                <h2 class="mb-4">任务管理</h2>
+            <!-- 作业监控 - 任务列表 -->
+            <div v-if="currentView === 'monitor' && monitorSub === 'taskList'">
+                <h2 class="mb-4">任务列表</h2>
 
                 <!-- 过滤器 -->
                 <div class="card mb-3">
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3">
-                                <input type="text" class="form-control" v-model="taskFilter.jobCode" placeholder="作业编码">
+                                <label class="form-label">作业</label>
+                                <select class="form-select" v-model="taskFilter.jobCode" @change="taskPagination.page = 0; loadTasks()">
+                                    <option value="">全部作业</option>
+                                    <option v-for="k in executableConfigKeys" :key="k" :value="k">{{ k }}</option>
+                                </select>
                             </div>
                             <div class="col-md-3">
-                                <select class="form-select" v-model="taskFilter.status">
+                                <label class="form-label">状态</label>
+                                <select class="form-select" v-model="taskFilter.status" @change="taskPagination.page = 0; loadTasks()">
                                     <option value="">全部状态</option>
                                     <option value="RUNNING">运行中</option>
                                     <option value="SUCCESS">成功</option>
                                     <option value="FAILED">失败</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-primary" @click="loadTasks">
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary me-2" @click="loadTasks">
                                     <i class="bi bi-search"></i> 查询
                                 </button>
-                                <button class="btn btn-secondary ms-2" @click="resetTaskFilter">
+                                <button class="btn btn-secondary" @click="resetTaskFilter">
                                     <i class="bi bi-arrow-clockwise"></i> 重置
                                 </button>
                             </div>
@@ -224,7 +265,9 @@
                             <tbody>
                                 <tr v-for="task in tasks" :key="task.id">
                                     <td>{{ task.id }}</td>
-                                    <td>{{ task.jobCode }}</td>
+                                    <td>
+                                        <span class="text-primary" style="cursor:pointer" @click="goToConfig(task.jobCode)" :title="'去配置'">{{ task.jobCode }}</span>
+                                    </td>
                                     <td>{{ task.batchNumber }}</td>
                                     <td>
                                         <span class="badge badge-status" :class="getStatusClass(task.status)">
@@ -236,12 +279,9 @@
                                     <td>{{ formatDate(task.startTime) }}</td>
                                     <td>{{ formatDate(task.endTime) }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-info me-1" @click="viewTaskDetail(task.id)">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" @click="deleteTask(task.id)">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        <a href="#" class="btn btn-sm btn-outline-primary me-1" @click.prevent="goToOpsExecute(task.jobCode)">执行</a>
+                                        <button class="btn btn-sm btn-info me-1" @click="viewTaskDetail(task.id)"><i class="bi bi-eye"></i> 详情</button>
+                                        <button class="btn btn-sm btn-danger" @click="deleteTask(task.id)"><i class="bi bi-trash"></i> 删除</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -265,47 +305,25 @@
                 </div>
             </div>
 
-            <!-- 作业执行视图 -->
-            <div v-if="currentView === 'jobs'">
+            <!-- 作业运维 - 作业执行 -->
+            <div v-if="currentView === 'ops' && opsSub === 'execute'">
                 <h2 class="mb-4">作业执行</h2>
-                <div class="mb-3">
-                    <button class="btn btn-outline-secondary btn-sm" @click="importConfigToDb" title="将 classpath 下 conf 的 YAML 导入到数据库（仅 database 模式有效）">
-                        <i class="bi bi-upload"></i> 导入配置到 DB
-                    </button>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="mb-0"><i class="bi bi-download"></i> 卸载作业</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label">作业编码</label>
-                                    <input type="text" class="form-control" v-model="extractJobCode" placeholder="输入作业编码">
-                                </div>
-                                <button class="btn btn-success" @click="triggerExtract" :disabled="!extractJobCode">
-                                    <i class="bi bi-play-fill"></i> 执行卸载
-                                </button>
-                            </div>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">选择作业</label>
+                            <select class="form-select" v-model="selectedJobConfigKey">
+                                <option value="">请选择作业</option>
+                                <option v-for="k in executableConfigKeys" :key="k" :value="k">{{ k }}</option>
+                            </select>
                         </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0"><i class="bi bi-upload"></i> 加载作业</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label">作业编码</label>
-                                    <input type="text" class="form-control" v-model="loadJobCode" placeholder="输入作业编码">
-                                </div>
-                                <button class="btn btn-primary" @click="triggerLoad" :disabled="!loadJobCode">
-                                    <i class="bi bi-play-fill"></i> 执行加载
-                                </button>
-                            </div>
+                        <div v-if="selectedJobConfigKey && selectedJobConfigKey.endsWith('_load')" class="mb-3">
+                            <label class="form-label">源批次号（可选）</label>
+                            <input type="text" class="form-control" v-model="loadSourceBatch" placeholder="不填则按本作业配置的 input_directory 取最新批次；填则加载指定批次" />
                         </div>
+                        <button class="btn btn-primary" @click="triggerJob" :disabled="!selectedJobConfigKey">
+                            <i class="bi bi-play-fill"></i> 执行
+                        </button>
                     </div>
                 </div>
 
@@ -318,19 +336,22 @@
                         <p><strong>消息:</strong> {{ jobResult.message }}</p>
                         <p v-if="jobResult.taskId"><strong>任务ID:</strong> {{ jobResult.taskId }}</p>
                         <p v-if="jobResult.batchNumber"><strong>批次号:</strong> {{ jobResult.batchNumber }}</p>
-                        <button v-if="jobResult.taskId" class="btn btn-info" @click="viewTaskDetail(jobResult.taskId)">
-                            查看任务详情
+                        <button v-if="jobResult.taskId" class="btn btn-info" @click="goToMonitorTaskList(selectedJobConfigKey)">
+                            查看任务
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- 作业配置视图 -->
-            <div v-if="currentView === 'jobConfig'">
-                <h2 class="mb-4">作业配置</h2>
+            <!-- 作业配置 -->
+            <div v-if="currentView === 'config'">
+                <h2 class="mb-4">配置列表</h2>
                 <div class="mb-3">
                     <button class="btn btn-primary" @click="openAddJobConfig">
                         <i class="bi bi-plus-lg"></i> 新增作业
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" @click="openConfigSpec">
+                        <i class="bi bi-book"></i> 配置说明
                     </button>
                 </div>
                 <div class="card">
@@ -338,7 +359,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>配置 Key</th>
+                                    <th>作业名</th>
                                     <th>更新时间</th>
                                     <th>操作</th>
                                 </tr>
@@ -348,12 +369,12 @@
                                     <td>{{ item.configKey }}</td>
                                     <td>{{ formatDate(item.updatedAt) }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" @click="openEditJobConfig(item.configKey)">
-                                            <i class="bi bi-pencil"></i> 编辑
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger" @click="deleteJobConfig(item.configKey)" :disabled="item.configKey === '__global__'">
-                                            <i class="bi bi-trash"></i> 删除
-                                        </button>
+                                        <span v-if="item.configKey !== '__global__'">
+                                            <a href="#" class="me-2 small" @click.prevent="goToMonitorTaskList(item.configKey)">监控</a>
+                                            <a href="#" class="me-2 small" @click.prevent="goToOpsExecute(item.configKey)">执行</a>
+                                        </span>
+                                        <button class="btn btn-sm btn-outline-primary me-1" @click="openEditJobConfig(item.configKey)"><i class="bi bi-pencil"></i> 编辑</button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="deleteJobConfig(item.configKey)" :disabled="item.configKey === '__global__'"><i class="bi bi-trash"></i> 删除</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -363,20 +384,22 @@
                 </div>
             </div>
 
-            <!-- 表级导出视图 -->
-            <div v-if="currentView === 'tableExport'">
-                <h2 class="mb-4">表级导出</h2>
+            <!-- 作业运维 - 表级导出/加载 -->
+            <div v-if="currentView === 'ops' && opsSub === 'tableExport'">
+                <h2 class="mb-4">表级导出与加载</h2>
+                <p class="text-muted mb-3">策略均按作业配置执行（全量/增量或 TRUNCATE_LOAD/APPEND/MERGE 由配置决定），无需在此选择。</p>
+
                 <div class="card mb-4">
                     <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0">单表导出（全量/增量）</h5>
+                        <h5 class="mb-0">表级卸载</h5>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label class="form-label">作业配置</label>
-                                <select class="form-select" v-model="tableExport.configKey" @change="loadExportableTables">
+                                <label class="form-label">卸载作业（仅 Kingbase）</label>
+                                <select class="form-select" v-model="tableExport.configKey" @change="loadTablesForJob(tableExport.configKey, 'export'); tableExport.tableName = ''">
                                     <option value="">请选择</option>
-                                    <option v-for="k in configKeys" :key="k" :value="k">{{ k }}</option>
+                                    <option v-for="k in tableExportConfigKeys" :key="k" :value="k">{{ k }}</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -386,34 +409,66 @@
                                     <option v-for="t in exportableTables" :key="t" :value="t">{{ t }}</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">模式</label>
-                                <select class="form-select" v-model="tableExport.mode">
-                                    <option value="full">全量</option>
-                                    <option value="incremental">增量</option>
-                                </select>
-                            </div>
                         </div>
                         <button class="btn btn-primary" @click="triggerTableExport" :disabled="!tableExport.configKey || !tableExport.tableName">
-                            <i class="bi bi-play-fill"></i> 导出
+                            <i class="bi bi-play-fill"></i> 执行卸载
                         </button>
                         <div v-if="tableExportResult" class="mt-3">
                             <p class="text-success mb-0" v-if="tableExportResult.message">{{ tableExportResult.message }}</p>
                             <span v-if="tableExportResult.taskId">
-                                <button class="btn btn-sm btn-info" @click="viewTaskDetail(tableExportResult.taskId)">查看任务</button>
+                                <button class="btn btn-sm btn-info" @click="goToMonitorTaskList(tableExport.configKey)">查看任务</button>
                             </span>
                         </div>
                     </div>
                 </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">表级加载</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">加载作业（仅 Kingbase）</label>
+                                <select class="form-select" v-model="tableLoad.configKey" @change="loadTablesForJob(tableLoad.configKey, 'load'); tableLoad.tableName = ''">
+                                    <option value="">请选择</option>
+                                    <option v-for="k in tableLoadConfigKeys" :key="k" :value="k">{{ k }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">表名</label>
+                                <select class="form-select" v-model="tableLoad.tableName">
+                                    <option value="">请选择</option>
+                                    <option v-for="t in loadableTables" :key="t" :value="t">{{ t }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">源批次号（可选）</label>
+                                <input type="text" class="form-control" v-model="tableLoad.sourceBatch" placeholder="不填则取最新批次">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" @click="triggerTableLoad" :disabled="!tableLoad.configKey || !tableLoad.tableName">
+                            <i class="bi bi-play-fill"></i> 执行加载
+                        </button>
+                        <div v-if="tableLoadResult" class="mt-3">
+                            <p class="text-success mb-0" v-if="tableLoadResult.message">{{ tableLoadResult.message }}</p>
+                            <span v-if="tableLoadResult.taskId">
+                                <button class="btn btn-sm btn-info" @click="goToMonitorTaskList(tableLoad.configKey)">查看任务</button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
-                    <div class="card-header">表级导出历史</div>
+                    <div class="card-header">表级操作历史</div>
                     <div class="card-body">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>类型</th>
                                     <th>作业</th>
                                     <th>表名</th>
-                                    <th>模式</th>
+                                    <th>模式/源批次</th>
                                     <th>状态</th>
                                     <th>请求时间</th>
                                     <th>操作</th>
@@ -421,13 +476,14 @@
                             </thead>
                             <tbody>
                                 <tr v-for="r in manualExports" :key="r.id">
+                                    <td>{{ r.type === 'LOAD' ? '加载' : '卸载' }}</td>
                                     <td>{{ r.jobCode }}</td>
                                     <td>{{ r.tableName }}</td>
-                                    <td>{{ r.mode }}</td>
+                                    <td>{{ r.type === 'LOAD' ? (r.sourceBatch || '-') : r.mode }}</td>
                                     <td><span class="badge" :class="getStatusClass(r.status)">{{ r.status }}</span></td>
                                     <td>{{ formatDate(r.requestedAt) }}</td>
                                     <td>
-                                        <button v-if="r.taskId" class="btn btn-sm btn-info" @click="viewTaskDetail(r.taskId)">任务</button>
+                                        <button v-if="r.taskId" class="btn btn-sm btn-info" @click="goToMonitorTaskList(r.jobCode)">任务</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -437,8 +493,8 @@
                 </div>
             </div>
 
-            <!-- 系统监控视图 -->
-            <div v-if="currentView === 'system'">
+            <!-- 作业运维 - 系统监控 -->
+            <div v-if="currentView === 'ops' && opsSub === 'system'">
                 <h2 class="mb-4">系统监控</h2>
 
                 <div class="card">
@@ -504,9 +560,9 @@
                     <div class="modal-body">
                         <div v-if="jobConfigError" class="alert alert-danger">{{ jobConfigError }}</div>
                         <div class="mb-3">
-                            <label class="form-label">配置 Key</label>
+                            <label class="form-label">作业名（全局唯一）</label>
                             <input type="text" class="form-control" v-model="jobConfigModal.configKey"
-                                   :readonly="jobConfigModal.isEdit" placeholder="如 my_job_extract">
+                                   :readonly="jobConfigModal.isEdit" placeholder="新建可留空，由 YAML 内 job.name 解析；编辑时为当前作业名">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">YAML 内容</label>
@@ -519,6 +575,26 @@
                         <button type="button" class="btn btn-primary" @click="saveJobConfig">
                             {{ jobConfigModal.isEdit ? '保存' : '新增' }}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置说明模态框 -->
+        <div class="modal fade" id="configSpecModal" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">配置文件说明</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" @click="closeConfigSpec"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="configSpecLoading" class="text-muted">加载中…</div>
+                        <div v-else-if="configSpecError" class="text-danger">{{ configSpecError }}</div>
+                        <div v-else class="config-spec-body" v-html="configSpecHtml"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="closeConfigSpec">关闭</button>
                     </div>
                 </div>
             </div>
@@ -546,11 +622,39 @@
                             <tr v-if="selectedTask.errorMessage"><th>错误信息</th><td class="text-danger">{{ selectedTask.errorMessage }}</td></tr>
                         </table>
 
+                        <h6 class="mt-3">进度信息</h6>
                         <div v-if="taskProgress">
-                            <h6 class="mt-3">进度信息</h6>
                             <table class="table table-sm">
                                 <tr v-if="taskProgress.durationSeconds"><th>已用时间</th><td>{{ formatDuration(taskProgress.durationSeconds) }}</td></tr>
                                 <tr v-if="taskProgress.estimatedRemainingSeconds"><th>预计剩余</th><td>{{ formatDuration(taskProgress.estimatedRemainingSeconds) }}</td></tr>
+                            </table>
+                        </div>
+
+                        <div class="mt-2">
+                            <h6 class="text-muted small">执行日志</h6>
+                            <div v-if="parseExecutionLog(selectedTask).length === 0" class="text-muted small">暂无执行日志</div>
+                            <div v-else class="border rounded p-2 bg-light" style="max-height: 280px; overflow-y: auto;">
+                                <div v-for="(entry, idx) in parseExecutionLog(selectedTask)" :key="idx" class="small py-1 border-bottom border-light">
+                                    <span class="text-muted">{{ formatLogTime(entry.created_at) }}</span>
+                                    <span class="badge bg-secondary ms-1">{{ entry.stage || '-' }}</span>
+                                    <span v-if="entry.log_level" class="badge bg-info ms-1">{{ entry.log_level }}</span>
+                                    <div :class="{ 'font-monospace bg-white px-1 mt-1': isPathLogMessage(entry.message) }">{{ entry.message || '-' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="taskStatistics && taskStatistics.stageMetrics && taskStatistics.stageMetrics.length" class="mt-3">
+                            <h6 class="text-muted small">阶段耗时</h6>
+                            <table class="table table-sm">
+                                <thead><tr><th>阶段</th><th>耗时</th><th>状态</th><th>说明</th></tr></thead>
+                                <tbody>
+                                    <tr v-for="(m, i) in taskStatistics.stageMetrics" :key="i">
+                                        <td>{{ m.stageName }}</td>
+                                        <td>{{ m.durationMs != null ? m.durationMs + ' ms' : '-' }}</td>
+                                        <td>{{ m.status || '-' }}</td>
+                                        <td class="small">{{ m.message || '-' }}</td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
 
@@ -560,10 +664,31 @@
                                 <tr v-if="taskStatistics.totalTables"><th>导出表数</th><td>{{ taskStatistics.totalTables }}</td></tr>
                                 <tr v-if="taskStatistics.totalRows"><th>总行数</th><td>{{ taskStatistics.totalRows }}</td></tr>
                                 <tr v-if="taskStatistics.totalFiles"><th>文件数</th><td>{{ taskStatistics.totalFiles }}</td></tr>
-                                <tr v-if="taskStatistics.compressionRatio"><th>压缩率</th><td>{{ (taskStatistics.compressionRatio * 100).toFixed(2) }}%</td></tr>
+                                <tr v-if="taskStatistics.compressionRatio != null"><th>压缩率</th><td>{{ (taskStatistics.compressionRatio * 100).toFixed(2) }}% <span class="text-muted small">(压缩后/原始×100%)</span></td></tr>
                                 <tr v-if="taskStatistics.splitCount"><th>分片数</th><td>{{ taskStatistics.splitCount }}</td></tr>
+                                <tr><th>加密</th><td>{{ taskStatistics.encrypted ? '是' + (taskStatistics.encryptionDurationMs != null ? ' (' + taskStatistics.encryptionDurationMs + ' ms)' : '') : '否' }}</td></tr>
                             </table>
                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-primary btn-sm" @click="viewTaskManifest(selectedTask.id)">查看 Manifest</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manifest 内容模态框 -->
+        <div class="modal fade" id="manifestModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Manifest 内容</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="!taskManifest" class="text-muted">暂无或无法加载 manifest</div>
+                        <pre v-else class="bg-light p-3 rounded small mb-0" style="max-height: 70vh; overflow: auto;"><code>{{ manifestJson }}</code></pre>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>

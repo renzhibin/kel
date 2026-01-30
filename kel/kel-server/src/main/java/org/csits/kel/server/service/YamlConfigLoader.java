@@ -39,5 +39,10 @@ public class YamlConfigLoader {
     public JobConfig loadJobConfigFromString(String yaml) throws IOException {
         return yamlMapper.readValue(new StringReader(yaml), JobConfig.class);
     }
+
+    /** 将作业配置序列化为 YAML 字符串（用于迁移等回写场景）。 */
+    public String writeJobConfigToString(JobConfig config) throws IOException {
+        return yamlMapper.writeValueAsString(config);
+    }
 }
 

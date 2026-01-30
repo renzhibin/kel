@@ -5,9 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import org.csits.kel.dao.TaskExecutionEntity;
 import org.csits.kel.dao.TaskExecutionRepository;
-import org.csits.kel.manager.batch.BatchNumberGenerator;
 import org.csits.kel.server.dto.GlobalConfig;
 import org.csits.kel.server.dto.JobConfig;
 import org.csits.kel.server.dto.TaskExecutionContext;
@@ -33,8 +35,6 @@ class TaskExecutionServiceTest {
     @Mock
     private TaskLogger taskLogger;
     @Mock
-    private BatchNumberGenerator batchNumberGenerator;
-    @Mock
     private ExtractPluginRegistry extractPluginRegistry;
     @Mock
     private LoadPluginRegistry loadPluginRegistry;
@@ -51,21 +51,26 @@ class TaskExecutionServiceTest {
             compressionManager,
             smCryptoManager,
             taskLogger,
-            batchNumberGenerator,
             extractPluginRegistry,
             loadPluginRegistry,
-            manifestService
+            manifestService,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
         );
     }
 
     @Test
     void createContext_returnsContextWithTaskIdBatchNumberJobCode() {
-        when(batchNumberGenerator.nextBatchNumber()).thenReturn("20250129120000_001");
+        when(taskExecutionRepository.countByCreatedAtBetween(any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(0L);
         doAnswer(inv -> {
             TaskExecutionEntity e = inv.getArgument(0);
-            e.setTaskId(100L);
+            e.setId(100L);
             return e;
-        }).when(taskExecutionRepository).create(any(TaskExecutionEntity.class));
+        }).when(taskExecutionRepository).save(any(TaskExecutionEntity.class));
 
         GlobalConfig globalConfig = new GlobalConfig();
         JobConfig jobConfig = new JobConfig();
@@ -75,8 +80,9 @@ class TaskExecutionServiceTest {
 
         TaskExecutionContext ctx = service.createContext("demo", globalConfig, jobConfig);
 
+        String datePrefix = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         assertThat(ctx.getTaskId()).isEqualTo(100L);
-        assertThat(ctx.getBatchNumber()).isEqualTo("20250129120000_001");
+        assertThat(ctx.getBatchNumber()).isEqualTo(datePrefix + "_001");
         assertThat(ctx.getJobCode()).isEqualTo("demo");
         assertThat(ctx.getGlobalConfig()).isSameAs(globalConfig);
         assertThat(ctx.getJobConfig()).isSameAs(jobConfig);

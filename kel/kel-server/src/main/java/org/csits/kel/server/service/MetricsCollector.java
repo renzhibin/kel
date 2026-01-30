@@ -1,6 +1,9 @@
 package org.csits.kel.server.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +17,7 @@ import org.csits.kel.dao.TaskExecutionEntity;
 import org.csits.kel.dao.TaskExecutionRepository;
 import org.csits.kel.server.dto.StageMetrics;
 import org.csits.kel.server.dto.TaskStatistics;
+import org.csits.kel.server.serializer.LocalDateTimeDeserializer;
 import org.springframework.stereotype.Service;
 
 /**
@@ -26,7 +30,17 @@ import org.springframework.stereotype.Service;
 public class MetricsCollector {
 
     private final TaskExecutionRepository taskExecutionRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = createStatisticsObjectMapper();
+
+    private static ObjectMapper createStatisticsObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        SimpleModule module = new SimpleModule();
+        module.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer());
+        mapper.registerModule(module);
+        return mapper;
+    }
 
     // 内存中的指标缓存
     private final Map<Long, TaskStatistics> metricsCache = new ConcurrentHashMap<>();

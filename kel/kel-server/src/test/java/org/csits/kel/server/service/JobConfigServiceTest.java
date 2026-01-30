@@ -41,11 +41,11 @@ class JobConfigServiceTest {
         globalEntity.setConfigKey("__global__");
         globalEntity.setContentYaml(globalYaml);
         JobConfigEntity mergeJobEntity = new JobConfigEntity();
-        mergeJobEntity.setConfigKey("merge_job_extract");
+        mergeJobEntity.setConfigKey("merge_job");
         mergeJobEntity.setContentYaml(mergeJobYaml);
 
         when(jobConfigRepository.findByConfigKey("__global__")).thenReturn(Optional.of(globalEntity));
-        when(jobConfigRepository.findByConfigKey("merge_job_extract")).thenReturn(Optional.of(mergeJobEntity));
+        when(jobConfigRepository.findByConfigKey("merge_job")).thenReturn(Optional.of(mergeJobEntity));
         when(jobConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
 
         service = new JobConfigService(yamlConfigLoader, resourceLoader, resourcePatternResolver, jobConfigRepository);
@@ -77,7 +77,7 @@ class JobConfigServiceTest {
 
     @Test
     void loadJobConfig_loadsFromDb() throws Exception {
-        JobConfig jobConfig = service.loadJobConfig("merge_job_extract");
+        JobConfig jobConfig = service.loadJobConfig("merge_job");
         assertThat(jobConfig).isNotNull();
         assertThat(jobConfig.getJob().getName()).isEqualTo("merge_job");
         assertThat(jobConfig.getRuntime().getTableConcurrency()).isEqualTo(10);

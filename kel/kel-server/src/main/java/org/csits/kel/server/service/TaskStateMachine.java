@@ -66,6 +66,12 @@ public class TaskStateMachine {
 
         String currentStatus = entity.getStatus();
 
+        // 幂等：当前已是目标状态则直接成功
+        if (targetStatus.name().equals(currentStatus)) {
+            log.debug("任务已是目标状态，跳过转换: taskId={}, status={}", taskId, currentStatus);
+            return true;
+        }
+
         // 验证状态转换是否合法
         if (!isValidTransition(currentStatus, targetStatus)) {
             log.error("非法的状态转换: taskId={}, from={}, to={}",

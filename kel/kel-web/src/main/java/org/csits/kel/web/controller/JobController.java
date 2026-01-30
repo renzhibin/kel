@@ -36,7 +36,7 @@ public class JobController {
     public ResponseEntity<Map<String, Object>> triggerExtract(@PathVariable String jobCode) {
         try {
             log.info("触发卸载作业: {}", jobCode);
-            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobCode, "extract");
+            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobCode);
             TaskExecutionContext context = taskExecutionService.createContext(
                 jobCode, merged.getGlobalConfig(), merged.getJobConfig());
 
@@ -64,15 +64,17 @@ public class JobController {
     }
 
     /**
-     * 触发加载作业
+     * 触发加载作业。sourceBatch 可选：指定要加载的卸载批次号（如 20260130_008），作为 load 的逆任务时必填。
      */
     @PostMapping("/{jobCode}/load")
-    public ResponseEntity<Map<String, Object>> triggerLoad(@PathVariable String jobCode) {
+    public ResponseEntity<Map<String, Object>> triggerLoad(
+            @PathVariable String jobCode,
+            @RequestParam(required = false) String sourceBatch) {
         try {
-            log.info("触发加载作业: {}", jobCode);
-            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobCode, "load");
+            log.info("触发加载作业: {}, sourceBatch={}", jobCode, sourceBatch);
+            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobCode);
             TaskExecutionContext context = taskExecutionService.createContext(
-                jobCode, merged.getGlobalConfig(), merged.getJobConfig());
+                jobCode, merged.getGlobalConfig(), merged.getJobConfig(), sourceBatch);
 
             // 异步执行
             new Thread(() -> {
@@ -98,16 +100,12 @@ public class JobController {
     }
 
     /**
-     * 获取作业配置。jobCode 可为完整 key（如 demo_extract）或短编码，type 为 extract 或 load。
+     * 获取作业配置。path 为 job.name（与 config_key 一致）。
      */
-    @GetMapping("/{jobCode}/config")
-    public ResponseEntity<JobConfig> getJobConfig(
-            @PathVariable String jobCode,
-            @RequestParam(required = false, defaultValue = "extract") String type) {
+    @GetMapping("/{jobName}/config")
+    public ResponseEntity<JobConfig> getJobConfig(@PathVariable String jobName) {
         try {
-            String configKey = jobCode.endsWith("_extract") || jobCode.endsWith("_load")
-                ? jobCode : jobCode + "_" + type;
-            JobConfig config = jobConfigService.loadJobConfig(configKey);
+            JobConfig config = jobConfigService.loadJobConfig(jobName);
             return ResponseEntity.ok(config);
         } catch (Exception e) {
             log.error("获取作业配置失败", e);
@@ -121,6 +119,22 @@ public class JobController {
     @GetMapping("/config-keys")
     public ResponseEntity<List<String>> listJobConfigKeys() {
         return ResponseEntity.ok(jobConfigService.listJobConfigKeys());
+    }
+
+    /**
+     * 表级卸载用：仅 Kingbase 卸载作业（job.type=EXTRACT_KINGBASE），不含 file_extract。
+     */
+    @GetMapping("/config-keys/table-export")
+    public ResponseEntity<List<String>> listConfigKeysForTableExport() {
+        return ResponseEntity.ok(jobConfigService.listConfigKeysForTableExport());
+    }
+
+    /**
+     * 表级加载用：仅 Kingbase 加载作业（job.type=KINGBASE_LOAD），不含 file_load。
+     */
+    @GetMapping("/config-keys/table-load")
+    public ResponseEntity<List<String>> listConfigKeysForTableLoad() {
+        return ResponseEntity.ok(jobConfigService.listConfigKeysForTableLoad());
     }
 
     /**
@@ -150,19 +164,22 @@ public class JobController {
     }
 
     /**
-     * 新增或覆盖作业配置。Body: { "configKey": "xxx_extract", "contentYaml": "..." }。仅 database 模式可写。
+     * 新增或覆盖作业配置。Body: { "contentYaml": "..." } 必填；可选 "configKey" 表示当前 key（更新时传入，须与 YAML 内 job.name 一致或用于重命名）。仅 database 模式可写。
      */
     @PostMapping("/configs")
     public ResponseEntity<Map<String, Object>> saveJobConfig(@RequestBody Map<String, String> body) {
-        String configKey = body != null ? body.get("configKey") : null;
         String contentYaml = body != null ? body.get("contentYaml") : null;
-        if (configKey == null || contentYaml == null) {
+        if (contentYaml == null || contentYaml.isBlank()) {
             Map<String, Object> err = new HashMap<>();
-            err.put("error", "configKey 与 contentYaml 不能为空");
+            err.put("error", "contentYaml 不能为空");
             return ResponseEntity.badRequest().body(err);
         }
+        String currentKey = body != null && body.containsKey("configKey") ? body.get("configKey") : null;
+        if (currentKey != null && currentKey.isBlank()) {
+            currentKey = null;
+        }
         try {
-            jobConfigService.saveJobConfig(configKey.trim(), contentYaml);
+            jobConfigService.saveJobConfig(currentKey, contentYaml);
             Map<String, Object> result = new HashMap<>();
             result.put("message", "保存成功");
             return ResponseEntity.ok(result);
@@ -239,32 +256,78 @@ public class JobController {
     }
 
     /**
-     * 某作业可导出的表列表（configKey 为完整 key，如 demo_extract）
+     * 存量迁移：使 YAML 内 job.name 与 config_key 一致（仅作业配置，不含 __global__）。
+     */
+    @PostMapping("/admin/migrate-job-name")
+    public ResponseEntity<Map<String, Object>> migrateJobName() {
+        try {
+            int updated = jobConfigService.migrateJobNameToConfigKey();
+            Map<String, Object> result = new HashMap<>();
+            result.put("message", "迁移完成");
+            result.put("updated", updated);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("迁移 job.name 失败", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 某作业可导出/可加载的表列表。extract 作业返回可导出表，load 作业返回可加载表。
      */
     @GetMapping("/{configKey}/tables")
-    public ResponseEntity<java.util.List<String>> listExportableTables(@PathVariable String configKey) {
+    public ResponseEntity<java.util.List<String>> listTables(@PathVariable String configKey) {
+        if (configKey != null && configKey.endsWith("_load")) {
+            return ResponseEntity.ok(manualExportService.listLoadableTables(configKey));
+        }
         return ResponseEntity.ok(manualExportService.listExportableTables(configKey));
     }
 
     /**
-     * 人工表级导出。configKey 如 demo_extract，mode 为 full 或 incremental。
+     * 人工表级导出（卸载）。策略按作业配置，不选全量/增量。
      */
     @PostMapping("/{configKey}/tables/{tableName}/export")
     public ResponseEntity<Map<String, Object>> triggerTableExport(
             @PathVariable String configKey,
-            @PathVariable String tableName,
-            @RequestParam(defaultValue = "full") String mode) {
+            @PathVariable String tableName) {
         try {
             ManualExportService.ManualExportResult r = manualExportService.triggerTableExport(
-                configKey, tableName, mode);
+                configKey, tableName);
             Map<String, Object> result = new HashMap<>();
             result.put("manualExportId", r.getManualExportId());
             result.put("taskId", r.getTaskId());
             result.put("batchNumber", r.getBatchNumber());
-            result.put("message", "表级导出已启动");
+            result.put("message", "表级导出已启动（按作业配置执行）");
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("触发表级导出失败", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
+     * 人工表级加载。按作业配置执行，sourceBatch 可选（不填则按 input_directory 取最新批次）。
+     */
+    @PostMapping("/{configKey}/tables/{tableName}/load")
+    public ResponseEntity<Map<String, Object>> triggerTableLoad(
+            @PathVariable String configKey,
+            @PathVariable String tableName,
+            @RequestParam(required = false) String sourceBatch) {
+        try {
+            ManualExportService.ManualExportResult r = manualExportService.triggerTableLoad(
+                configKey, tableName, sourceBatch);
+            Map<String, Object> result = new HashMap<>();
+            result.put("manualExportId", r.getManualExportId());
+            result.put("taskId", r.getTaskId());
+            result.put("batchNumber", r.getBatchNumber());
+            result.put("message", "表级加载已启动（按作业配置执行）");
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("触发表级加载失败", e);
             Map<String, Object> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);

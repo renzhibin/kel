@@ -1,0 +1,20 @@
+---
+description: 修改功能后默认重新打包并调用浏览器验证
+alwaysApply: true
+---
+
+# 功能修改后的验证流程
+
+修改完功能（前端、后端或配置等影响运行行为的改动）后，**默认**需要：
+
+1. **重新打包**：在 `kel` 目录执行 `mvn clean package -Dmaven.test.skip=true`（或 `mvn test` 如需跑测试）。
+2. **运行jar包**：在 `kel` 目录执行 `java -jar kel-start/target/kel-start-0.0.1-SNAPSHOT.jar`。
+3. **浏览器验证**：用新打好的 jar 启动应用后，在浏览器中打开管控中心（如 http://localhost:8082/）验证本次修改。
+
+## 操作要点
+
+- 若本地已有旧进程占用端口，先停止再启动新 jar，否则浏览器看到的仍是旧版本。
+- 启动命令示例：`cd kel && java -jar kel-start/target/kel-start-0.0.1-SNAPSHOT.jar`
+- 验证时根据改动范围检查对应菜单/页面与交互（如作业监控、作业配置、作业运维及按 jobCode 跳转等）。
+
+完成功能修改后，主动执行打包并在浏览器中做一次验证，除非用户明确说不必。
