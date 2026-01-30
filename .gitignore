@@ -7,6 +7,8 @@
 
 # Logs
 *.log
+kel/logs/
+kel/kel-start/logs/
 
 # OS
 .DS_Store
