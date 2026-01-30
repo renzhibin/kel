@@ -16,7 +16,7 @@ createApp({
             tasks: [],
             recentTasks: [],
             taskFilter: {
-                jobCode: '',
+                jobName: '',
                 status: ''
             },
             taskPagination: {
@@ -127,7 +127,7 @@ createApp({
                     page: this.taskPagination.page,
                     size: this.taskPagination.size
                 };
-                if (this.taskFilter.jobCode) params.jobCode = this.taskFilter.jobCode;
+                if (this.taskFilter.jobName) params.jobName = this.taskFilter.jobName;
                 if (this.taskFilter.status) params.status = this.taskFilter.status;
 
                 const response = await axios.get('/api/tasks', { params });
@@ -140,7 +140,7 @@ createApp({
         },
 
         resetTaskFilter() {
-            this.taskFilter.jobCode = '';
+            this.taskFilter.jobName = '';
             this.taskFilter.status = '';
             this.taskPagination.page = 0;
             this.loadTasks();
@@ -157,9 +157,9 @@ createApp({
             this.loadJobConfigs();
         },
 
-        goToMonitorTaskList(jobCode) {
+        goToMonitorTaskList(jobName) {
             this.navTo('monitor', 'taskList');
-            this.taskFilter.jobCode = jobCode || '';
+            this.taskFilter.jobName = jobName || '';
             this.taskFilter.status = '';
             this.taskPagination.page = 0;
             this.loadTasks();
@@ -176,12 +176,12 @@ createApp({
             const q = hash.indexOf('?');
             if (q === -1) return;
             const params = new URLSearchParams(hash.slice(q));
-            const jobCode = params.get('jobCode');
-            if (jobCode) {
+            const jobName = params.get('jobName') || params.get('jobCode');
+            if (jobName) {
                 const path = hash.slice(1, q) || '';
-                if (path.startsWith('monitor/taskList')) this.goToMonitorTaskList(jobCode);
-                else if (path.startsWith('config')) this.goToConfig(jobCode);
-                else if (path.startsWith('ops/execute')) this.goToOpsExecute(jobCode);
+                if (path.startsWith('monitor/taskList')) this.goToMonitorTaskList(jobName);
+                else if (path.startsWith('config')) this.goToConfig(jobName);
+                else if (path.startsWith('ops/execute')) this.goToOpsExecute(jobName);
             }
         },
 

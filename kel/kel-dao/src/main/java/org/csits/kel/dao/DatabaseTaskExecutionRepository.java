@@ -25,7 +25,7 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
     private final JdbcTemplate jdbcTemplate;
 
     private static final String INSERT_SQL =
-        "INSERT INTO task_execution (job_code, batch_number, status, node_name, config_snapshot, " +
+        "INSERT INTO task_execution (job_name, batch_number, status, node_name, config_snapshot, " +
         "progress, current_stage, error_message, start_time, end_time, statistics, execution_log) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)";
 
@@ -38,7 +38,7 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
         "SELECT * FROM task_execution WHERE id = ?";
 
     private static final String SELECT_BY_JOB_CODE_SQL =
-        "SELECT * FROM task_execution WHERE job_code = ? ORDER BY created_at DESC";
+        "SELECT * FROM task_execution WHERE job_name = ? ORDER BY created_at DESC";
 
     private static final String SELECT_BY_BATCH_NUMBER_SQL =
         "SELECT * FROM task_execution WHERE batch_number = ? ORDER BY created_at DESC LIMIT 1";
@@ -69,7 +69,7 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
 
         jdbcTemplate.update(connection -> {
             java.sql.PreparedStatement ps = connection.prepareStatement(INSERT_SQL, new String[]{"id"});
-            ps.setString(1, entity.getJobCode());
+            ps.setString(1, entity.getJobName());
             ps.setString(2, entity.getBatchNumber());
             ps.setString(3, entity.getStatus());
             ps.setString(4, entity.getNodeName());
@@ -86,8 +86,8 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
 
         Long id = keyHolder.getKey().longValue();
         entity.setId(id);
-        log.debug("插入任务执行记录: id={}, jobCode={}, batchNumber={}",
-            id, entity.getJobCode(), entity.getBatchNumber());
+        log.debug("插入任务执行记录: id={}, jobName={}, batchNumber={}",
+            id, entity.getJobName(), entity.getBatchNumber());
         return entity;
     }
 
@@ -126,8 +126,8 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
     }
 
     @Override
-    public List<TaskExecutionEntity> findByJobCode(String jobCode) {
-        return jdbcTemplate.query(SELECT_BY_JOB_CODE_SQL, new TaskExecutionRowMapper(), jobCode);
+    public List<TaskExecutionEntity> findByJobName(String jobName) {
+        return jdbcTemplate.query(SELECT_BY_JOB_CODE_SQL, new TaskExecutionRowMapper(), jobName);
     }
 
     @Override
@@ -178,7 +178,7 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
         public TaskExecutionEntity mapRow(ResultSet rs, int rowNum) throws SQLException {
             TaskExecutionEntity entity = new TaskExecutionEntity();
             entity.setId(rs.getLong("id"));
-            entity.setJobCode(rs.getString("job_code"));
+            entity.setJobName(rs.getString("job_name"));
             entity.setBatchNumber(rs.getString("batch_number"));
             entity.setStatus(rs.getString("status"));
             entity.setNodeName(rs.getString("node_name"));

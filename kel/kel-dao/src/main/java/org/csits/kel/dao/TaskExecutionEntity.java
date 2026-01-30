@@ -11,7 +11,7 @@ public class TaskExecutionEntity {
 
     private Long id;
 
-    private String jobCode;
+    private String jobName;
 
     private String batchNumber;
 

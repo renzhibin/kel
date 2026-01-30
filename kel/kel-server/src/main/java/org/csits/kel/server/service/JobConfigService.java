@@ -49,7 +49,7 @@ public class JobConfigService {
      * 合并配置。jobName 即配置唯一标识（DB config_key = YAML 内 job.name），传 job.name 即可加载。
      */
     public MergedResult loadMergedConfig(String jobName) throws IOException {
-        if (jobName == null || jobName.isBlank()) {
+        if (jobName == null || jobName.trim().isEmpty()) {
             throw new IllegalArgumentException("jobName 不能为空");
         }
         String key = jobName.trim();
@@ -76,7 +76,7 @@ public class JobConfigService {
     }
 
     private static boolean isBlank(String s) {
-        return s == null || s.isBlank();
+        return s == null || s.trim().isEmpty();
     }
 
     public List<String> listJobConfigKeys() {
@@ -137,7 +137,7 @@ public class JobConfigService {
      * @param contentYaml 配置 YAML
      */
     public void saveJobConfig(String currentKey, String contentYaml) throws IOException {
-        if (contentYaml == null || contentYaml.isBlank()) {
+        if (contentYaml == null || contentYaml.trim().isEmpty()) {
             throw new IllegalArgumentException("contentYaml 不能为空");
         }
         if (currentKey != null && "__global__".equals(currentKey.trim())) {
@@ -149,11 +149,11 @@ public class JobConfigService {
             return;
         }
         JobConfig parsed = yamlConfigLoader.loadJobConfigFromString(contentYaml);
-        if (parsed.getJob() == null || parsed.getJob().getName() == null || parsed.getJob().getName().isBlank()) {
+        if (parsed.getJob() == null || parsed.getJob().getName() == null || parsed.getJob().getName().trim().isEmpty()) {
             throw new IllegalArgumentException("YAML 内 job.name 不能为空，且作为配置唯一标识");
         }
         String jobName = parsed.getJob().getName().trim();
-        if (currentKey == null || currentKey.isBlank()) {
+        if (currentKey == null || currentKey.trim().isEmpty()) {
             if (jobConfigRepository.existsByConfigKey(jobName)) {
                 throw new IllegalArgumentException("job.name 已存在，不能重名: " + jobName);
             }
@@ -209,7 +209,7 @@ public class JobConfigService {
                 config.setJob(new JobConfig.JobBasic());
             }
             String currentName = config.getJob().getName();
-            if (currentName == null || currentName.isBlank() || !currentName.trim().equals(key)) {
+            if (currentName == null || currentName.trim().isEmpty() || !currentName.trim().equals(key)) {
                 config.getJob().setName(key);
                 String newYaml = yamlConfigLoader.writeJobConfigToString(config);
                 entity.setContentYaml(newYaml);

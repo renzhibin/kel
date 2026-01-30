@@ -18,7 +18,7 @@ import org.csits.kel.server.dto.TaskExecutionContext;
 import org.springframework.stereotype.Service;
 
 /**
- * 人工表级导出/加载：按 jobCode + tableName 触发，卸载/加载策略按作业配置执行，记录写入 kel.manual_export。
+ * 人工表级导出/加载：按 jobName + tableName 触发，卸载/加载策略按作业配置执行，记录写入 kel.manual_export。
  */
 @Slf4j
 @Service
@@ -126,7 +126,7 @@ public class ManualExportService {
 
         ManualExportEntity record = new ManualExportEntity();
         record.setType("EXPORT");
-        record.setJobCode(configKey);
+        record.setJobName(configKey);
         record.setTableName(tableName);
         record.setMode(mode);
         record.setSourceBatch(null);
@@ -164,7 +164,7 @@ public class ManualExportService {
 
         ManualExportEntity record = new ManualExportEntity();
         record.setType("LOAD");
-        record.setJobCode(configKey);
+        record.setJobName(configKey);
         record.setTableName(tableName);
         record.setMode("CONFIG");
         record.setSourceBatch(context.getBatchNumber());
@@ -188,12 +188,12 @@ public class ManualExportService {
         return new ManualExportResult(recordId, context.getTaskId(), context.getBatchNumber());
     }
 
-    public List<ManualExportEntity> listManualExports(String jobCode, String tableName, int page, int size) {
-        if (jobCode != null && !jobCode.isEmpty() && tableName != null && !tableName.isEmpty()) {
-            return manualExportRepository.findByJobCodeAndTableName(jobCode, tableName);
+    public List<ManualExportEntity> listManualExports(String jobName, String tableName, int page, int size) {
+        if (jobName != null && !jobName.isEmpty() && tableName != null && !tableName.isEmpty()) {
+            return manualExportRepository.findByJobNameAndTableName(jobName, tableName);
         }
-        if (jobCode != null && !jobCode.isEmpty()) {
-            return manualExportRepository.findByJobCode(jobCode);
+        if (jobName != null && !jobName.isEmpty()) {
+            return manualExportRepository.findByJobName(jobName);
         }
         return manualExportRepository.findAll(page, size);
     }

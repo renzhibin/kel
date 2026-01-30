@@ -92,7 +92,7 @@ class FileExtractPluginTest {
 
     private TaskExecutionContext contextForExtract(String extractDir, String workDir, String pattern) {
         TaskExecutionContext ctx = new TaskExecutionContext();
-        ctx.setJobCode("fileJob");
+        ctx.setJobName("fileJob");
         ctx.setBatchNumber("batch1");
         GlobalConfig globalConfig = new GlobalConfig();
         ctx.setGlobalConfig(globalConfig);

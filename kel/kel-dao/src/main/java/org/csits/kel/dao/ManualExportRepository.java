@@ -12,9 +12,9 @@ public interface ManualExportRepository {
 
     Optional<ManualExportEntity> findById(Long id);
 
-    List<ManualExportEntity> findByJobCode(String jobCode);
+    List<ManualExportEntity> findByJobName(String jobName);
 
-    List<ManualExportEntity> findByJobCodeAndTableName(String jobCode, String tableName);
+    List<ManualExportEntity> findByJobNameAndTableName(String jobName, String tableName);
 
     List<ManualExportEntity> findAll(int page, int size);
 

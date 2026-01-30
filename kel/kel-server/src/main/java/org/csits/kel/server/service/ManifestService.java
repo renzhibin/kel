@@ -41,7 +41,7 @@ public class ManifestService {
         ManifestMetadata manifest = new ManifestMetadata();
 
         // 基本信息
-        manifest.setJobCode(context.getJobCode());
+        manifest.setJobName(context.getJobName());
         manifest.setBatchNumber(context.getBatchNumber());
         manifest.setTimestamp(ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
 
@@ -133,8 +133,8 @@ public class ManifestService {
             throw new IOException("Manifest文件不存在: " + manifestFile);
         }
         ManifestMetadata manifest = objectMapper.readValue(manifestFile.toFile(), ManifestMetadata.class);
-        log.info("解析manifest: jobCode={}, batchNumber={}, files={}",
-            manifest.getJobCode(), manifest.getBatchNumber(),
+        log.info("解析manifest: jobName={}, batchNumber={}, files={}",
+            manifest.getJobName(), manifest.getBatchNumber(),
             manifest.getFiles() != null ? manifest.getFiles().size() : 0);
         return manifest;
     }

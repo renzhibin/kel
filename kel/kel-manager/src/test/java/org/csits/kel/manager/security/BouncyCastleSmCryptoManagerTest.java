@@ -47,7 +47,7 @@ class BouncyCastleSmCryptoManagerTest {
         // 创建包含内容的文件
         Path file = tempDir.resolve("test.txt");
         String content = "Hello, SM3!";
-        Files.writeString(file, content, StandardCharsets.UTF_8);
+        Files.write(file, content.getBytes(StandardCharsets.UTF_8));
 
         // 计算SM3
         String hash = cryptoManager.calculateSm3(file);
@@ -82,7 +82,7 @@ class BouncyCastleSmCryptoManagerTest {
         // 创建测试文件
         Path source = tempDir.resolve("source.txt");
         String content = "This is a test for SM4 encryption!";
-        Files.writeString(source, content, StandardCharsets.UTF_8);
+        Files.write(source, content.getBytes(StandardCharsets.UTF_8));
 
         // 加密
         Path encrypted = tempDir.resolve("encrypted.bin");
@@ -98,7 +98,7 @@ class BouncyCastleSmCryptoManagerTest {
         cryptoManager.decryptSm4(encrypted, decrypted, key);
 
         // 验证解密后内容一致
-        String decryptedContent = Files.readString(decrypted, StandardCharsets.UTF_8);
+        String decryptedContent = new String(Files.readAllBytes(decrypted), StandardCharsets.UTF_8);
         assertEquals(content, decryptedContent);
     }
 
@@ -132,7 +132,7 @@ class BouncyCastleSmCryptoManagerTest {
     void testEncryptDecryptSm4_WrongKey() throws IOException {
         // 创建测试文件
         Path source = tempDir.resolve("source.txt");
-        Files.writeString(source, "Secret data", StandardCharsets.UTF_8);
+        Files.write(source, "Secret data".getBytes(StandardCharsets.UTF_8));
 
         // 使用密钥1加密
         Path encrypted = tempDir.resolve("encrypted.bin");
@@ -149,7 +149,7 @@ class BouncyCastleSmCryptoManagerTest {
     void testSm4KeyPreparation() throws IOException {
         // 测试不同长度的密钥
         Path source = tempDir.resolve("test.txt");
-        Files.writeString(source, "Test", StandardCharsets.UTF_8);
+        Files.write(source, "Test".getBytes(StandardCharsets.UTF_8));
 
         // 短密钥
         Path enc1 = tempDir.resolve("enc1.bin");
@@ -173,7 +173,7 @@ class BouncyCastleSmCryptoManagerTest {
     void testSm4DeterministicIV() throws IOException {
         // 测试相同密钥生成相同IV
         Path source = tempDir.resolve("test.txt");
-        Files.writeString(source, "Test content", StandardCharsets.UTF_8);
+        Files.write(source, "Test content".getBytes(StandardCharsets.UTF_8));
 
         String key = "same_key";
 
@@ -194,7 +194,7 @@ class BouncyCastleSmCryptoManagerTest {
     @Test
     void testEmptyKey() throws IOException {
         Path source = tempDir.resolve("test.txt");
-        Files.writeString(source, "test", StandardCharsets.UTF_8);
+        Files.write(source, "test".getBytes(StandardCharsets.UTF_8));
 
         // 空密钥应该抛出异常（被包装在IOException中）
         IOException ex1 = assertThrows(IOException.class, () -> {

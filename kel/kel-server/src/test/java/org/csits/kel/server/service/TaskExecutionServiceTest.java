@@ -83,7 +83,7 @@ class TaskExecutionServiceTest {
         String datePrefix = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         assertThat(ctx.getTaskId()).isEqualTo(100L);
         assertThat(ctx.getBatchNumber()).isEqualTo(datePrefix + "_001");
-        assertThat(ctx.getJobCode()).isEqualTo("demo");
+        assertThat(ctx.getJobName()).isEqualTo("demo");
         assertThat(ctx.getGlobalConfig()).isSameAs(globalConfig);
         assertThat(ctx.getJobConfig()).isSameAs(jobConfig);
     }

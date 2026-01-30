@@ -21,9 +21,9 @@ public class TaskExecutionContext {
     private String batchNumber;
 
     /**
-     * 作业编码（jobCode/job.name）。
+     * 作业名（jobName，对应 job.name）。
      */
-    private String jobCode;
+    private String jobName;
 
     /**
      * 合并后的全局配置。
@@ -43,11 +43,11 @@ public class TaskExecutionContext {
     public TaskExecutionContext() {
     }
 
-    public TaskExecutionContext(Long taskId, String batchNumber, String jobCode,
+    public TaskExecutionContext(Long taskId, String batchNumber, String jobName,
                                 GlobalConfig globalConfig, JobConfig jobConfig) {
         this.taskId = taskId;
         this.batchNumber = batchNumber;
-        this.jobCode = jobCode;
+        this.jobName = jobName;
         this.globalConfig = globalConfig;
         this.jobConfig = jobConfig;
     }

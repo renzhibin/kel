@@ -3,9 +3,14 @@ package org.csits.kel.server.plugin.kingbase;
 import org.csits.kel.server.dto.GlobalConfig;
 import org.csits.kel.server.dto.JobConfig;
 import org.csits.kel.server.dto.TaskExecutionContext;
+import org.csits.kel.server.service.FileNamingService;
+import org.csits.kel.server.service.MetricsCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -16,7 +21,13 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 并发导出功能测试
  */
+@ExtendWith(MockitoExtension.class)
 class KingbaseExtractPluginConcurrencyTest {
+
+    @Mock
+    private FileNamingService fileNamingService;
+    @Mock
+    private MetricsCollector metricsCollector;
 
     private KingbaseExtractPlugin plugin;
 
@@ -25,7 +36,7 @@ class KingbaseExtractPluginConcurrencyTest {
 
     @BeforeEach
     void setUp() {
-        plugin = new KingbaseExtractPlugin();
+        plugin = new KingbaseExtractPlugin(fileNamingService, metricsCollector);
     }
 
     @Test

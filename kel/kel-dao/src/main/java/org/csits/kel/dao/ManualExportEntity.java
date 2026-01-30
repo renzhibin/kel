@@ -12,7 +12,8 @@ public class ManualExportEntity {
     private Long id;
     /** EXPORT=表级卸载, LOAD=表级加载 */
     private String type;
-    private String jobCode;
+    /** 作业名（jobName，对应 job.name） */
+    private String jobName;
     private String tableName;
     private String mode;
     /** 仅 LOAD 时使用：源批次号 */

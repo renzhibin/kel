@@ -46,12 +46,12 @@ public class KingbaseLoadPlugin implements LoadPlugin {
         JobConfig config = ctx.getJobConfig();
         JobConfig.TargetDatabaseConfig target = config.getTargetDatabase();
         if (target == null) {
-            log.warn("作业 {} 未配置 target_database，跳过数据库加载", ctx.getJobCode());
+            log.warn("作业 {} 未配置 target_database，跳过数据库加载", ctx.getJobName());
             return;
         }
         Path dataDir = resolveWorkDir(ctx).resolve("data");
         if (Files.notExists(dataDir) || !Files.isDirectory(dataDir)) {
-            log.warn("作业 {} 工作目录下无 data 目录: {}", ctx.getJobCode(), dataDir);
+            log.warn("作业 {} 工作目录下无 data 目录: {}", ctx.getJobName(), dataDir);
             return;
         }
         String url = String.format("jdbc:postgresql://%s:%d/%s",
@@ -60,8 +60,8 @@ public class KingbaseLoadPlugin implements LoadPlugin {
         Map<String, Long> loadTableStats = new LinkedHashMap<>();
         try (Connection conn = DriverManager.getConnection(url, target.getUser(), target.getPassword())) {
             List<JobConfig.LoadTaskConfig> loadTasks = config.getLoadTasks();
-            if (loadTasks == null || loadTasks.isEmpty()) {
-                log.info("作业 {} 未配置 load_tasks，跳过加载", ctx.getJobCode());
+                if (loadTasks == null || loadTasks.isEmpty()) {
+                    log.info("作业 {} 未配置 load_tasks，跳过加载", ctx.getJobName());
                 ctx.setAttribute("loadTableStats", loadTableStats);
                 return;
             }

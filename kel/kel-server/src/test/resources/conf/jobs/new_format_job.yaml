@@ -1,0 +1,64 @@
+# 新格式作业配置示例（job / settings / resources / tasks）
+job:
+  type: "EXTRACT_KINGBASE"
+  name: "daily_sync"
+  description: "每日数据同步"
+
+settings:
+  runtime:
+    table_concurrency: 4
+    max_retries: 3
+    retry_interval_sec: 5
+  encoding: "UTF-8"
+  batch_number_format: "yyyyMMdd_NNN"
+  work_dir: "../data/work"
+  cleanup_work_dir: true
+  compression:
+    enable_compression: true
+    algorithm: "gzip"
+    split_threshold_gb: 2
+  security:
+    enable_encryption: true
+    sm4_key: "csits@2026"
+
+resources:
+  extract_database:
+    host: "localhost"
+    port: 54321
+    name: "source_db"
+    user: "reader"
+    password: "password"
+    database_version: "V8R6"
+  target_database:
+    host: "localhost"
+    port: 54321
+    name: "target_db"
+    user: "writer"
+    password: "password"
+    database_version: "V8R6"
+  extract_dir:
+    extract_dir: "../data/extract"
+    exchange_dir: "../data/exchange"
+  load_dir:
+    input_dir: "../data/input"
+    target_dir: "../data/target"
+
+tasks:
+  - mode: "FULL"
+    tables:
+      - "t_bond_info"
+      - "t_bond_trade"
+    interface_mapping:
+      t_bond_info: "J0001"
+      t_bond_trade: "J0002"
+  - mode: "INCREMENTAL"
+    queries:
+      - name: "company_info_inc"
+        sql: "SELECT * FROM t_company_info WHERE update_time >= CURRENT_DATE"
+    interface_mapping:
+      company_info_inc: "J0001"
+  - mode: "TRUNCATE_LOAD"
+    mappings:
+      "J0001": "t_bond_info"
+      "J0002": "t_bond_trade"
+    transaction: true

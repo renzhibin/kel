@@ -25,17 +25,17 @@ public class DatabaseJobConfigRepository implements JobConfigRepository {
     private final JdbcTemplate jdbcTemplate;
 
     private static final String INSERT_SQL =
-        "INSERT INTO job_config (config_key, content_yaml) VALUES (?, ?)";
+        "INSERT INTO job_config (job_name, content_yaml) VALUES (?, ?)";
     private static final String UPDATE_SQL =
-        "UPDATE job_config SET content_yaml = ? WHERE config_key = ?";
+        "UPDATE job_config SET content_yaml = ? WHERE job_name = ?";
     private static final String SELECT_BY_KEY_SQL =
-        "SELECT * FROM job_config WHERE config_key = ?";
+        "SELECT * FROM job_config WHERE job_name = ?";
     private static final String SELECT_ALL_SQL =
-        "SELECT * FROM job_config ORDER BY config_key";
+        "SELECT * FROM job_config ORDER BY job_name";
     private static final String DELETE_SQL =
-        "DELETE FROM job_config WHERE config_key = ?";
+        "DELETE FROM job_config WHERE job_name = ?";
     private static final String EXISTS_SQL =
-        "SELECT 1 FROM job_config WHERE config_key = ? LIMIT 1";
+        "SELECT 1 FROM job_config WHERE job_name = ? LIMIT 1";
 
     @Override
     public Optional<JobConfigEntity> findByConfigKey(String configKey) {
@@ -89,7 +89,7 @@ public class DatabaseJobConfigRepository implements JobConfigRepository {
         public JobConfigEntity mapRow(ResultSet rs, int rowNum) throws SQLException {
             JobConfigEntity e = new JobConfigEntity();
             e.setId(rs.getLong("id"));
-            e.setConfigKey(rs.getString("config_key"));
+            e.setConfigKey(rs.getString("job_name"));
             e.setContentYaml(rs.getString("content_yaml"));
             Timestamp created = rs.getTimestamp("created_at");
             e.setCreatedAt(created != null ? created.toLocalDateTime() : null);

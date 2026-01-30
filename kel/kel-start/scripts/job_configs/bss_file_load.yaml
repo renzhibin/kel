@@ -1,0 +1,17 @@
+# 由库内旧格式对照新层级生成：bss_file_load
+job:
+  type: "FILE_LOAD"
+  name: "bss_file_load"
+  description: "BSS 文件加载"
+
+settings:
+  work_dir: "work"
+
+resources:
+  load_dir:
+    input_dir: "exchange/bss_file_extract"
+    target_dir: "data/bss_file_load/output"
+
+tasks:
+  - mode: "APPEND"
+    target_dir: "data/bss_file_load/output"

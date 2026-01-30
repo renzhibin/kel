@@ -44,9 +44,9 @@ class JobConfigServiceTest {
         mergeJobEntity.setConfigKey("merge_job");
         mergeJobEntity.setContentYaml(mergeJobYaml);
 
+        when(jobConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
         when(jobConfigRepository.findByConfigKey("__global__")).thenReturn(Optional.of(globalEntity));
         when(jobConfigRepository.findByConfigKey("merge_job")).thenReturn(Optional.of(mergeJobEntity));
-        when(jobConfigRepository.findByConfigKey(anyString())).thenReturn(Optional.empty());
 
         service = new JobConfigService(yamlConfigLoader, resourceLoader, resourcePatternResolver, jobConfigRepository);
     }

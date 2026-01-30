@@ -1,0 +1,27 @@
+# 由库内旧格式对照新层级生成：bss_file_extract
+# 旧：extract_tasks[].attribute → 新：tasks[].files
+job:
+  type: "FILE_EXTRACT"
+  name: "bss_file_extract"
+  description: "BSS 文件采集示例作业（从本地 data 目录模拟采集文件）"
+
+settings:
+  runtime:
+    table_concurrency: 1
+  work_dir: "work"
+
+resources:
+  extract_dir:
+    extract_dir: "data/bss_file_extract/input"
+    exchange_dir: "exchange"
+  load_dir:
+    input_dir: "exchange/bss_file_extract"
+    target_dir: "data/bss_file_load/output"
+
+tasks:
+  - mode: "INCREMENTAL"
+    files:
+      pattern: "*"
+      time_type: "MODIFY_TIME"
+      time_range: "LAST_7_DAY"
+      size_limit_mb: 100

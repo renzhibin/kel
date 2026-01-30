@@ -16,10 +16,10 @@ public class ManifestMetadata {
     private String version = "1.0";
 
     /**
-     * 作业编码
+     * 作业名
      */
-    @JsonProperty("job_code")
-    private String jobCode;
+    @JsonProperty("job_name")
+    private String jobName;
 
     /**
      * 批次号

@@ -35,20 +35,20 @@ public class KelXxlJobHandler {
         XxlJobHelper.log("kelJobHandler start, param={}", param);
 
         if (param == null || param.trim().isEmpty()) {
-            XxlJobHelper.handleFail("缺少参数，需提供 jobCode，例如：bss_kingbase_extract");
+            XxlJobHelper.handleFail("缺少参数，需提供 jobName，例如：bss_kingbase_extract");
             return;
         }
-        String jobCode = param.trim();
-        if (jobCode.isEmpty()) {
-            XxlJobHelper.handleFail("缺少 jobCode，参数示例：bss_kingbase_extract");
+        String jobName = param.trim();
+        if (jobName.isEmpty()) {
+            XxlJobHelper.handleFail("缺少 jobName，参数示例：bss_kingbase_extract");
             return;
         }
 
         try {
             JobConfigService.MergedResult merged =
-                jobConfigService.loadMergedConfig(jobCode);
+                jobConfigService.loadMergedConfig(jobName);
             TaskExecutionContext context = taskExecutionService.createContext(
-                jobCode,
+                jobName,
                 merged.getGlobalConfig(),
                 merged.getJobConfig()
             );
@@ -63,13 +63,13 @@ public class KelXxlJobHandler {
                     break;
                 default:
                     String msg = "不支持的作业类型 type=" + merged.getJobConfig().getJob().getType()
-                        + ", jobCode=" + jobCode;
+                        + ", jobName=" + jobName;
                     XxlJobHelper.log(msg);
                     XxlJobHelper.handleFail(msg);
                     return;
             }
-            XxlJobHelper.log("kelJobHandler success, jobCode={}, type={}",
-                jobCode, merged.getJobConfig().getJob().getType());
+            XxlJobHelper.log("kelJobHandler success, jobName={}, type={}",
+                jobName, merged.getJobConfig().getJob().getType());
         } catch (Exception e) {
             log.error("kelJobHandler failed, param={}", param, e);
             XxlJobHelper.log(e);

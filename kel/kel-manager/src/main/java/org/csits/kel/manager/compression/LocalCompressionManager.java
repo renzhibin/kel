@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -105,7 +106,7 @@ public class LocalCompressionManager implements CompressionManager {
                     Files.createDirectories(dest);
                 } else {
                     Files.createDirectories(dest.getParent());
-                    Files.copy(tais, dest);
+                    Files.copy(tais, dest, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
         }

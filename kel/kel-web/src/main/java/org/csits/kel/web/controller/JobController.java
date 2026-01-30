@@ -32,13 +32,13 @@ public class JobController {
     /**
      * 触发卸载作业
      */
-    @PostMapping("/{jobCode}/extract")
-    public ResponseEntity<Map<String, Object>> triggerExtract(@PathVariable String jobCode) {
+    @PostMapping("/{jobName}/extract")
+    public ResponseEntity<Map<String, Object>> triggerExtract(@PathVariable String jobName) {
         try {
-            log.info("触发卸载作业: {}", jobCode);
-            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobCode);
+            log.info("触发卸载作业: {}", jobName);
+            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobName);
             TaskExecutionContext context = taskExecutionService.createContext(
-                jobCode, merged.getGlobalConfig(), merged.getJobConfig());
+                jobName, merged.getGlobalConfig(), merged.getJobConfig());
 
             // 异步执行
             new Thread(() -> {
@@ -66,15 +66,15 @@ public class JobController {
     /**
      * 触发加载作业。sourceBatch 可选：指定要加载的卸载批次号（如 20260130_008），作为 load 的逆任务时必填。
      */
-    @PostMapping("/{jobCode}/load")
+    @PostMapping("/{jobName}/load")
     public ResponseEntity<Map<String, Object>> triggerLoad(
-            @PathVariable String jobCode,
+            @PathVariable String jobName,
             @RequestParam(required = false) String sourceBatch) {
         try {
-            log.info("触发加载作业: {}, sourceBatch={}", jobCode, sourceBatch);
-            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobCode);
+            log.info("触发加载作业: {}, sourceBatch={}", jobName, sourceBatch);
+            JobConfigService.MergedResult merged = jobConfigService.loadMergedConfig(jobName);
             TaskExecutionContext context = taskExecutionService.createContext(
-                jobCode, merged.getGlobalConfig(), merged.getJobConfig(), sourceBatch);
+                jobName, merged.getGlobalConfig(), merged.getJobConfig(), sourceBatch);
 
             // 异步执行
             new Thread(() -> {
@@ -169,13 +169,13 @@ public class JobController {
     @PostMapping("/configs")
     public ResponseEntity<Map<String, Object>> saveJobConfig(@RequestBody Map<String, String> body) {
         String contentYaml = body != null ? body.get("contentYaml") : null;
-        if (contentYaml == null || contentYaml.isBlank()) {
+        if (contentYaml == null || contentYaml.trim().isEmpty()) {
             Map<String, Object> err = new HashMap<>();
             err.put("error", "contentYaml 不能为空");
             return ResponseEntity.badRequest().body(err);
         }
         String currentKey = body != null && body.containsKey("configKey") ? body.get("configKey") : null;
-        if (currentKey != null && currentKey.isBlank()) {
+        if (currentKey != null && currentKey.trim().isEmpty()) {
             currentKey = null;
         }
         try {

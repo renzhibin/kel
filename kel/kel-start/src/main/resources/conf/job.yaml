@@ -23,6 +23,8 @@ settings:
   # --- 数据格式通用配置 ---
   encoding: "UTF-8"                    # 文件编码，默认 UTF-8
   batch_number_format: "yyyyMMdd_NNN"  # 批次号格式，默认 yyyyMMdd_NNN
+
+  # --- 路径配置 ---
   work_dir: "../data/work"            # 工作目录，用于数据导出、打包、压缩等中间处理，必填
   cleanup_work_dir: true               # 执行后清理工作目录，默认 true（暂不实现）
 
@@ -80,10 +82,10 @@ resources:
 
   # --- 路径配置 ---
   # 流程：extract -> work -> exchange -> input -> work -> target
-  extract_paths:
+  extract_dir:
     extract_dir: "../data/extract"      # 卸载时的源文件目录（卸载时必填）
     exchange_dir: "../data/exchange"    # 卸载时的数据交换目录，用于存储xie卸载侧与加载侧交换数据
-  load_paths:
+  load_dir:
     input_dir: "../data/input"          # 加载任务输入目录（文件加载时必填）
     target_dir: "../data/target"        # 加载目标目录（文件加载时必填）
 

@@ -5,16 +5,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.csits.kel.server.constants.JobType;
 import org.csits.kel.server.dto.JobConfig;
 import org.csits.kel.server.dto.TaskExecutionContext;
+import org.csits.kel.server.service.FileNamingService;
+import org.csits.kel.server.service.MetricsCollector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 class KingbaseExtractPluginTest {
+
+    @Mock
+    private FileNamingService fileNamingService;
+    @Mock
+    private MetricsCollector metricsCollector;
 
     private KingbaseExtractPlugin plugin;
 
     @BeforeEach
     void setUp() {
-        plugin = new KingbaseExtractPlugin();
+        plugin = new KingbaseExtractPlugin(fileNamingService, metricsCollector);
     }
 
     @Test

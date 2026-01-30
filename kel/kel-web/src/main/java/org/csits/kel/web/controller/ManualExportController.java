@@ -23,11 +23,11 @@ public class ManualExportController {
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(
-            @RequestParam(required = false) String jobCode,
+            @RequestParam(required = false) String jobName,
             @RequestParam(required = false) String tableName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<ManualExportEntity> data = manualExportService.listManualExports(jobCode, tableName, page, size);
+        List<ManualExportEntity> data = manualExportService.listManualExports(jobName, tableName, page, size);
         long total = manualExportService.countManualExports();
         Map<String, Object> result = new HashMap<>();
         result.put("data", data);

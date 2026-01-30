@@ -1,0 +1,32 @@
+# 由库内旧格式对照新层级生成：bss_kingbase_load
+# 旧：input_directory, target_database, load_tasks.interfaceMapping, enableTransaction → 新：resources.load_dir.input_dir, resources.target_database, tasks[].mappings, transaction
+job:
+  type: "KINGBASE_LOAD"
+  name: "bss_kingbase_load"
+  description: "BSS 金仓加载（解包后 COPY 入 bss_load schema）"
+
+settings:
+  runtime:
+    table_concurrency: 1
+  work_dir: "work"
+
+resources:
+  target_database:
+    host: "127.0.0.1"
+    port: 5432
+    name: "kel"
+    user: "kel"
+    password: "kel"
+  extract_dir:
+    extract_dir: "work"
+    exchange_dir: "exchange"
+  load_dir:
+    input_dir: "exchange/bss_kingbase_extract"
+    target_dir: "data/target"
+
+tasks:
+  - mode: "TRUNCATE_LOAD"
+    mappings:
+      "bss.orders": "bss_load.orders"
+      "bss.customers": "bss_load.customers"
+    transaction: true

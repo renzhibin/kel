@@ -25,16 +25,16 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
     private final JdbcTemplate jdbcTemplate;
 
     private static final String INSERT_SQL =
-        "INSERT INTO manual_export (type, job_code, table_name, mode, source_batch, status, task_id, requested_by) " +
+        "INSERT INTO manual_export (type, job_name, table_name, mode, source_batch, status, task_id, requested_by) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String UPDATE_SQL =
         "UPDATE manual_export SET status = ?, task_id = ? WHERE id = ?";
     private static final String SELECT_BY_ID_SQL =
         "SELECT * FROM manual_export WHERE id = ?";
     private static final String SELECT_BY_JOB_SQL =
-        "SELECT * FROM manual_export WHERE job_code = ? ORDER BY requested_at DESC";
+        "SELECT * FROM manual_export WHERE job_name = ? ORDER BY requested_at DESC";
     private static final String SELECT_BY_JOB_AND_TABLE_SQL =
-        "SELECT * FROM manual_export WHERE job_code = ? AND table_name = ? ORDER BY requested_at DESC";
+        "SELECT * FROM manual_export WHERE job_name = ? AND table_name = ? ORDER BY requested_at DESC";
     private static final String SELECT_ALL_SQL =
         "SELECT * FROM manual_export ORDER BY requested_at DESC LIMIT ? OFFSET ?";
     private static final String COUNT_SQL =
@@ -48,7 +48,7 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
                 java.sql.PreparedStatement ps = connection.prepareStatement(INSERT_SQL, new String[]{"id"});
                 String type = entity.getType() != null ? entity.getType() : "EXPORT";
                 ps.setString(1, type);
-                ps.setString(2, entity.getJobCode());
+                ps.setString(2, entity.getJobName());
                 ps.setString(3, entity.getTableName());
                 ps.setString(4, entity.getMode());
                 ps.setString(5, entity.getSourceBatch());
@@ -73,13 +73,13 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
     }
 
     @Override
-    public List<ManualExportEntity> findByJobCode(String jobCode) {
-        return jdbcTemplate.query(SELECT_BY_JOB_SQL, new ManualExportRowMapper(), jobCode);
+    public List<ManualExportEntity> findByJobName(String jobName) {
+        return jdbcTemplate.query(SELECT_BY_JOB_SQL, new ManualExportRowMapper(), jobName);
     }
 
     @Override
-    public List<ManualExportEntity> findByJobCodeAndTableName(String jobCode, String tableName) {
-        return jdbcTemplate.query(SELECT_BY_JOB_AND_TABLE_SQL, new ManualExportRowMapper(), jobCode, tableName);
+    public List<ManualExportEntity> findByJobNameAndTableName(String jobName, String tableName) {
+        return jdbcTemplate.query(SELECT_BY_JOB_AND_TABLE_SQL, new ManualExportRowMapper(), jobName, tableName);
     }
 
     @Override
@@ -100,7 +100,7 @@ public class DatabaseManualExportRepository implements ManualExportRepository {
             ManualExportEntity e = new ManualExportEntity();
             e.setId(rs.getLong("id"));
             e.setType(hasColumn(rs, "type") ? nullToDefault(rs.getString("type"), "EXPORT") : "EXPORT");
-            e.setJobCode(rs.getString("job_code"));
+            e.setJobName(rs.getString("job_name"));
             e.setTableName(rs.getString("table_name"));
             e.setMode(rs.getString("mode"));
             e.setSourceBatch(hasColumn(rs, "source_batch") ? rs.getString("source_batch") : null);

@@ -46,13 +46,13 @@ public class FileLoadPlugin implements LoadPlugin {
         JobConfig config = ctx.getJobConfig();
         String targetDirStr = config.getTargetDirectory();
         if (targetDirStr == null || targetDirStr.isEmpty()) {
-            log.warn("作业 {} 未配置 target_directory，跳过文件还原", ctx.getJobCode());
+            log.warn("作业 {} 未配置 target_directory，跳过文件还原", ctx.getJobName());
             return;
         }
         Path workDir = resolveWorkDir(ctx);
         Path filesDir = workDir.resolve("files");
         if (Files.notExists(filesDir) || !Files.isDirectory(filesDir)) {
-            log.warn("作业 {} 工作目录下无 files 目录: {}", ctx.getJobCode(), filesDir);
+            log.warn("作业 {} 工作目录下无 files 目录: {}", ctx.getJobName(), filesDir);
             return;
         }
         Path targetRoot = Paths.get(targetDirStr);
@@ -71,7 +71,7 @@ public class FileLoadPlugin implements LoadPlugin {
             copied++;
         }
         ctx.setAttribute("filePathMappings", filePathMappings);
-        log.info("作业 {} 文件还原完成，共 {} 个文件到 {}", ctx.getJobCode(), copied, targetRoot);
+        log.info("作业 {} 文件还原完成，共 {} 个文件到 {}", ctx.getJobName(), copied, targetRoot);
     }
 
     private Path resolveWorkDir(TaskExecutionContext ctx) {

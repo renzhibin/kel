@@ -31,7 +31,7 @@ class TaskLoggerTest {
         taskLogger = new TaskLogger(taskExecutionRepository, new ObjectMapper());
         entity = new TaskExecutionEntity();
         entity.setTaskId(1L);
-        entity.setJobCode("job1");
+        entity.setJobName("job1");
         entity.setStatus(TaskExecutionStatus.RUNNING.name());
     }
 
@@ -45,7 +45,7 @@ class TaskLoggerTest {
         verify(taskExecutionRepository).save(captor.capture());
         TaskExecutionEntity updated = captor.getValue();
         assertThat(updated.getProgress()).isEqualTo(50);
-        assertThat(updated.getMessage()).isEqualTo("导出完成");
+        assertThat(updated.getCurrentStage()).isEqualTo("EXPORT");
     }
 
     @Test
@@ -57,9 +57,9 @@ class TaskLoggerTest {
         ArgumentCaptor<TaskExecutionEntity> captor = ArgumentCaptor.forClass(TaskExecutionEntity.class);
         verify(taskExecutionRepository).save(captor.capture());
         TaskExecutionEntity updated = captor.getValue();
-        assertThat(updated.getStatus()).isEqualTo(TaskExecutionStatus.SUCCESS);
+        assertThat(updated.getStatus()).isEqualTo("SUCCESS");
         assertThat(updated.getProgress()).isEqualTo(100);
-        assertThat(updated.getMessage()).isEqualTo("任务完成");
+        assertThat(updated.getCurrentStage()).isEqualTo("任务完成");
         assertThat(updated.getErrorMessage()).isNull();
     }
 
@@ -72,9 +72,9 @@ class TaskLoggerTest {
         ArgumentCaptor<TaskExecutionEntity> captor = ArgumentCaptor.forClass(TaskExecutionEntity.class);
         verify(taskExecutionRepository).save(captor.capture());
         TaskExecutionEntity updated = captor.getValue();
-        assertThat(updated.getStatus()).isEqualTo(TaskExecutionStatus.FAILED);
+        assertThat(updated.getStatus()).isEqualTo("FAILED");
         assertThat(updated.getProgress()).isEqualTo(0);
-        assertThat(updated.getMessage()).isEqualTo("失败");
+        assertThat(updated.getCurrentStage()).isEqualTo("失败");
         assertThat(updated.getErrorMessage()).isEqualTo("连接超时");
     }
 }

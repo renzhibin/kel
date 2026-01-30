@@ -20,9 +20,9 @@ public interface TaskExecutionRepository {
     Optional<TaskExecutionEntity> findById(Long id);
 
     /**
-     * 根据作业编码查询任务执行记录列表
+     * 根据作业名查询任务执行记录列表
      */
-    List<TaskExecutionEntity> findByJobCode(String jobCode);
+    List<TaskExecutionEntity> findByJobName(String jobName);
 
     /**
      * 根据批次号查询任务执行记录

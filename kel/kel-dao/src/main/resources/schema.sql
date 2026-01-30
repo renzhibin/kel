@@ -4,7 +4,7 @@ CREATE SCHEMA IF NOT EXISTS kel;
 -- 任务执行表（含执行日志：execution_log 合并原 task_execution_log）
 CREATE TABLE IF NOT EXISTS kel.task_execution (
     id BIGSERIAL PRIMARY KEY,
-    job_code VARCHAR(100) NOT NULL,
+    job_name VARCHAR(100) NOT NULL,
     batch_number VARCHAR(50) NOT NULL,
     status VARCHAR(20) NOT NULL,
     node_name VARCHAR(100),
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS kel.task_execution (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_task_execution_job_code ON kel.task_execution(job_code);
+CREATE INDEX IF NOT EXISTS idx_task_execution_job_name ON kel.task_execution(job_name);
 CREATE INDEX IF NOT EXISTS idx_task_execution_batch_number ON kel.task_execution(batch_number);
 CREATE INDEX IF NOT EXISTS idx_task_execution_status ON kel.task_execution(status);
 CREATE INDEX IF NOT EXISTS idx_task_execution_created_at ON kel.task_execution(created_at);
@@ -43,17 +43,17 @@ CREATE INDEX IF NOT EXISTS idx_task_execution_stats_type ON kel.task_execution_s
 -- 配置表（全局与作业 YAML，配置仅从 DB 加载）
 CREATE TABLE IF NOT EXISTS kel.job_config (
     id BIGSERIAL PRIMARY KEY,
-    config_key VARCHAR(100) NOT NULL UNIQUE,
+    job_name VARCHAR(100) NOT NULL UNIQUE,
     content_yaml TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_job_config_config_key ON kel.job_config(config_key);
+CREATE INDEX IF NOT EXISTS idx_job_config_job_name ON kel.job_config(job_name);
 
 -- 人工表级导出记录
 CREATE TABLE IF NOT EXISTS kel.manual_export (
     id BIGSERIAL PRIMARY KEY,
-    job_code VARCHAR(100) NOT NULL,
+    job_name VARCHAR(100) NOT NULL,
     table_name VARCHAR(200) NOT NULL,
     mode VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS kel.manual_export (
     requested_by VARCHAR(100),
     FOREIGN KEY (task_id) REFERENCES kel.task_execution(id) ON DELETE SET NULL
 );
-CREATE INDEX IF NOT EXISTS idx_manual_export_job_code ON kel.manual_export(job_code);
+CREATE INDEX IF NOT EXISTS idx_manual_export_job_name ON kel.manual_export(job_name);
 CREATE INDEX IF NOT EXISTS idx_manual_export_table_name ON kel.manual_export(table_name);
 CREATE INDEX IF NOT EXISTS idx_manual_export_status ON kel.manual_export(status);
 CREATE INDEX IF NOT EXISTS idx_manual_export_requested_at ON kel.manual_export(requested_at);

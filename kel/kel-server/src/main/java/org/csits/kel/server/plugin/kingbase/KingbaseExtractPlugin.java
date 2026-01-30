@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -65,7 +66,7 @@ public class KingbaseExtractPlugin implements ExtractPlugin {
         JobConfig config = ctx.getJobConfig();
         JobConfig.ExtractDatabaseConfig db = config.getExtractDatabase();
         if (db == null) {
-            log.warn("作业 {} 未配置 extract_database，跳过数据库卸载", ctx.getJobCode());
+            log.warn("作业 {} 未        配置 extract_database，跳过数据库卸载", ctx.getJobName());
             return;
         }
         String url = String.format("jdbc:postgresql://%s:%d/%s",
@@ -190,7 +191,7 @@ public class KingbaseExtractPlugin implements ExtractPlugin {
         if (baseWorkDir == null) {
             baseWorkDir = "work";
         }
-        Path dir = Path.of(baseWorkDir, jobName, context.getBatchNumber(), "data");
+        Path dir = Paths.get(baseWorkDir, jobName, context.getBatchNumber(), "data");
         Files.createDirectories(dir);
         return dir.resolve(fileName);
     }

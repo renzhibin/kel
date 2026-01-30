@@ -1,0 +1,28 @@
+# 由库内旧格式对照新层级生成：bss_kingbase_extract
+# 旧：extract_database, workDir, exchangeDir, extract_tasks, runtime → 新：resources.*, settings.*, tasks
+job:
+  type: "EXTRACT_KINGBASE"
+  name: "bss_kingbase_extract"
+  description: "BSS 金仓卸载（bss schema 表导出）"
+
+settings:
+  runtime:
+    table_concurrency: 1
+  work_dir: "work"
+
+resources:
+  extract_database:
+    host: "127.0.0.1"
+    port: 5432
+    name: "kel"
+    user: "kel"
+    password: "kel"
+  extract_dir:
+    extract_dir: "work"
+    exchange_dir: "exchange"
+
+tasks:
+  - mode: "FULL"
+    tables:
+      - "bss.orders"
+      - "bss.customers"

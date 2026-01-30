@@ -3,6 +3,7 @@ package org.csits.kel.server.service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -190,7 +191,7 @@ public class FileDeliveryService {
         Path parent = targetPath.getParent();
         return parent != null
             ? parent.resolve(fileName + TMP_SUFFIX)
-            : Path.of(fileName + TMP_SUFFIX);
+            : Paths.get(fileName + TMP_SUFFIX);
     }
 
     /**

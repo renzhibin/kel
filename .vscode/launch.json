@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "KelApplication (Spring Boot)",
+      "request": "launch",
+      "mainClass": "org.csits.kel.KelApplication",
+      "projectName": "kel-start"
+    },
+    {
+      "type": "java",
+      "name": "KelApplication (带 jobName)",
+      "request": "launch",
+      "mainClass": "org.csits.kel.KelApplication",
+      "projectName": "kel-start",
+      // "args": "--jobName=bss"
+    }
+  ]
+}

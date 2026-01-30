@@ -43,12 +43,12 @@ public class FileExtractPlugin implements ExtractPlugin {
         JobConfig config = ctx.getJobConfig();
         String extractDir = config.getExtractDirectory();
         if (extractDir == null || extractDir.isEmpty()) {
-            log.warn("作业 {} 未配置 extract_directory，跳过文件采集", ctx.getJobCode());
+            log.warn("作业 {} 未配置 extract_directory，跳过文件采集", ctx.getJobName());
             return;
         }
         Path root = Paths.get(extractDir);
         if (Files.notExists(root) || !Files.isDirectory(root)) {
-            log.warn("作业 {} extract_directory 不存在或非目录: {}", ctx.getJobCode(), extractDir);
+            log.warn("作业 {} extract_directory 不存在或非目录: {}", ctx.getJobName(), extractDir);
             return;
         }
         Path workDir = resolveWorkDir(ctx);
@@ -57,7 +57,7 @@ public class FileExtractPlugin implements ExtractPlugin {
 
         List<JobConfig.ExtractTaskConfig> tasks = config.getExtractTasks();
         if (tasks == null || tasks.isEmpty()) {
-            log.info("作业 {} 未配置 extract_tasks，跳过文件采集", ctx.getJobCode());
+            log.info("作业 {} 未配置 extract_tasks，跳过文件采集", ctx.getJobName());
             return;
         }
         List<Map<String, String>> extractPathMappings = new ArrayList<>();
@@ -84,7 +84,7 @@ public class FileExtractPlugin implements ExtractPlugin {
                 extractPathMappings.add(mapping);
                 copied++;
             }
-            log.info("作业 {} 文件采集完成，匹配 {} 个文件，复制 {} 个到 {}", ctx.getJobCode(), candidates.size(), copied, filesDir);
+            log.info("作业 {} 文件采集完成，匹配 {} 个文件，复制 {} 个到 {}", ctx.getJobName(), candidates.size(), copied, filesDir);
         }
         ctx.setAttribute("extractPathMappings", extractPathMappings);
     }

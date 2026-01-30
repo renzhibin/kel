@@ -49,4 +49,40 @@ class YamlConfigLoaderTest {
         assertThat(config.getRuntime()).isNotNull();
         assertThat(config.getRuntime().getTableConcurrency()).isEqualTo(5);
     }
+
+    @Test
+    void loadJobConfig_newFormat_settingsResourcesTasks() throws IOException {
+        Resource resource = new ClassPathResource("conf/jobs/new_format_job.yaml");
+        JobConfig config = loader.loadJobConfig(resource);
+
+        assertThat(config).isNotNull();
+        assertThat(config.getJob()).isNotNull();
+        assertThat(config.getJob().getName()).isEqualTo("daily_sync");
+        assertThat(config.getJob().getType().name()).isEqualTo("EXTRACT_KINGBASE");
+
+        // 兼容 getter：从 settings/resources 取值
+        assertThat(config.getRuntime()).isNotNull();
+        assertThat(config.getRuntime().getTableConcurrency()).isEqualTo(4);
+        assertThat(config.getWorkDir()).isEqualTo("../data/work");
+        assertThat(config.getExtractDatabase()).isNotNull();
+        assertThat(config.getExtractDatabase().getHost()).isEqualTo("localhost");
+        assertThat(config.getExtractDatabase().getPort()).isEqualTo(54321);
+        assertThat(config.getExtractDirectory()).isEqualTo("../data/extract");
+        assertThat(config.getExchangeDir()).isEqualTo("../data/exchange");
+        assertThat(config.getInputDirectory()).isEqualTo("../data/input");
+        assertThat(config.getTargetDirectory()).isEqualTo("../data/target");
+
+        // 兼容 getter：从 tasks 转为 getExtractTasks() / getLoadTasks()
+        assertThat(config.getExtractTasks()).hasSize(2);
+        assertThat(config.getExtractTasks().get(0).getType().name()).isEqualTo("FULL");
+        assertThat(config.getExtractTasks().get(0).getTables()).containsExactly("t_bond_info", "t_bond_trade");
+        assertThat(config.getExtractTasks().get(1).getType().name()).isEqualTo("INCREMENTAL");
+        assertThat(config.getExtractTasks().get(1).getSqlList()).hasSize(1);
+        assertThat(config.getExtractTasks().get(1).getSqlList().get(0).getName()).isEqualTo("company_info_inc");
+
+        assertThat(config.getLoadTasks()).hasSize(1);
+        assertThat(config.getLoadTasks().get(0).getType().name()).isEqualTo("TRUNCATE_LOAD");
+        assertThat(config.getLoadTasks().get(0).getInterfaceMapping()).containsEntry("J0001", "t_bond_info");
+        assertThat(config.getLoadTasks().get(0).getEnableTransaction()).isTrue();
+    }
 }

@@ -43,7 +43,7 @@ public class TaskController {
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> listTasks(
-        @RequestParam(required = false) String jobCode,
+        @RequestParam(required = false) String jobName,
         @RequestParam(required = false) String status,
         @RequestParam(defaultValue = "0") int days,
         @RequestParam(defaultValue = "0") int page,
@@ -55,7 +55,7 @@ public class TaskController {
 
         // 过滤
         List<TaskExecutionEntity> filtered = allTasks.stream()
-            .filter(t -> jobCode == null || jobCode.equals(t.getJobCode()))
+            .filter(t -> jobName == null || jobName.equals(t.getJobName()))
             .filter(t -> status == null || status.equals(t.getStatus()))
             .filter(t -> since == null || (t.getStartTime() != null && !t.getStartTime().isBefore(since)))
             .collect(Collectors.toList());
@@ -86,11 +86,11 @@ public class TaskController {
     }
 
     /**
-     * 根据作业编码查询任务列表
+     * 根据作业名查询任务列表
      */
-    @GetMapping("/by-job/{jobCode}")
-    public ResponseEntity<List<TaskExecutionEntity>> getTasksByJobCode(@PathVariable String jobCode) {
-        List<TaskExecutionEntity> tasks = taskExecutionRepository.findByJobCode(jobCode);
+    @GetMapping("/by-job/{jobName}")
+    public ResponseEntity<List<TaskExecutionEntity>> getTasksByJobName(@PathVariable String jobName) {
+        List<TaskExecutionEntity> tasks = taskExecutionRepository.findByJobName(jobName);
         return ResponseEntity.ok(tasks);
     }
 
@@ -181,7 +181,7 @@ public class TaskController {
                     String workDir = global.getExtract() != null && global.getExtract().getWorkDir() != null
                         ? global.getExtract().getWorkDir()
                         : "work";
-                    Path manifestPath = Paths.get(workDir, task.getJobCode(), task.getBatchNumber(), "manifest.json");
+                    Path manifestPath = Paths.get(workDir, task.getJobName(), task.getBatchNumber(), "manifest.json");
                     if (!Files.isRegularFile(manifestPath)) {
                         return java.util.Optional.<ManifestMetadata>empty();
                     }

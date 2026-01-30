@@ -62,9 +62,9 @@ public class TaskExecutionService {
     private final TaskStateMachine taskStateMachine;
     private final ProgressTracker progressTracker;
 
-    public TaskExecutionContext createContext(String jobCode, GlobalConfig globalConfig,
+    public TaskExecutionContext createContext(String jobName, GlobalConfig globalConfig,
                                               JobConfig jobConfig) {
-        return createContext(jobCode, globalConfig, jobConfig, null);
+        return createContext(jobName, globalConfig, jobConfig, null);
     }
 
     /**
@@ -72,10 +72,10 @@ public class TaskExecutionService {
      * - 卸载：batchNumberOverride 忽略，按当日执行数+1 生成（yyyyMMdd_NNN）。
      * - 加载：未填 sourceBatch 时，根据本作业配置的 input_directory 在本机下扫描取最新批次；填写则用该值。
      */
-    public TaskExecutionContext createContext(String jobCode, GlobalConfig globalConfig,
+    public TaskExecutionContext createContext(String jobName, GlobalConfig globalConfig,
                                               JobConfig jobConfig, String batchNumberOverride) {
         String batchNumber;
-        boolean isLoad = jobCode != null && jobCode.endsWith("_load");
+        boolean isLoad = jobName != null && jobName.endsWith("_load");
         if (isLoad) {
             if (batchNumberOverride != null && !batchNumberOverride.trim().isEmpty()) {
                 batchNumber = batchNumberOverride.trim();
@@ -98,7 +98,7 @@ public class TaskExecutionService {
             batchNumber = datePrefix + "_" + String.format("%03d", todayCount + 1);
         }
         TaskExecutionEntity entity = new TaskExecutionEntity();
-        entity.setJobCode(jobCode);
+        entity.setJobName(jobName);
         entity.setBatchNumber(batchNumber);
         entity.setStatus(TaskExecutionStatus.RUNNING.name());
         entity.setProgress(0);
@@ -114,7 +114,7 @@ public class TaskExecutionService {
         }
 
         TaskExecutionEntity saved = taskExecutionRepository.save(entity);
-        return new TaskExecutionContext(saved.getTaskId(), batchNumber, jobCode, globalConfig, jobConfig);
+        return new TaskExecutionContext(saved.getTaskId(), batchNumber, jobName, globalConfig, jobConfig);
     }
 
     public void executeExtract(TaskExecutionContext context) {
@@ -316,6 +316,19 @@ public class TaskExecutionService {
         // 从输入目录解压到 workDir（自动处理分片合并）
         progressTracker.updateLoadProgress(taskId, ProgressTracker.LoadStage.UNPACK, 0);
         metricsCollector.recordStageStart(taskId, "UNPACK");
+        // 清理工作目录（避免上次执行失败残留文件导致冲突）
+        if (Files.exists(workDirPath)) {
+            Files.walk(workDirPath)
+                .sorted(Comparator.reverseOrder())
+                .forEach(path -> {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        throw new RuntimeException("清理工作目录失败: " + path, e);
+                    }
+                });
+            Files.createDirectories(workDirPath);
+        }
         compressionManager.mergeAndDecompress(loadInputDir, workDirPath);
         taskLogger.logProgress(taskId, "UNPACK", 30, "解压完成，工作目录=" + workDirPath + "，批次号=" + (batchNumber != null ? batchNumber : "—"));
         metricsCollector.recordStageEnd(taskId, "UNPACK", "SUCCESS", "解压完成");

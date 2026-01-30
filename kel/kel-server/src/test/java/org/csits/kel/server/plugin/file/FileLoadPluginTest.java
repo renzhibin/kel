@@ -82,7 +82,7 @@ class FileLoadPluginTest {
 
     private TaskExecutionContext contextForLoad(String workBaseDir, String targetDir) {
         TaskExecutionContext ctx = new TaskExecutionContext();
-        ctx.setJobCode("loadJob");
+        ctx.setJobName("loadJob");
         ctx.setBatchNumber("batch1");
         GlobalConfig globalConfig = new GlobalConfig();
         ctx.setGlobalConfig(globalConfig);
