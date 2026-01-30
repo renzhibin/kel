@@ -480,7 +480,8 @@ public class TaskExecutionService {
         if (inputDirStr == null || inputDirStr.trim().isEmpty()) {
             return null;
         }
-        return Paths.get(inputDirStr.trim()).resolve(context.getBatchNumber());
+        // 规范化路径，处理 .. 和 . 符号，并转换为绝对路径
+        return Paths.get(inputDirStr.trim()).toAbsolutePath().normalize().resolve(context.getBatchNumber());
     }
 
     private Path initWorkDir(TaskExecutionContext context, boolean extract) throws IOException {
@@ -494,7 +495,8 @@ public class TaskExecutionService {
         if (baseWorkDir == null) {
             baseWorkDir = "work";
         }
-        Path root = Paths.get(baseWorkDir, jobName, context.getBatchNumber());
+        // 规范化路径，处理 .. 和 . 符号，并转换为绝对路径
+        Path root = Paths.get(baseWorkDir, jobName, context.getBatchNumber()).toAbsolutePath().normalize();
         fileSystemManager.ensureDirectory(root);
         return root;
     }
@@ -510,7 +512,8 @@ public class TaskExecutionService {
         if (exchangeDir == null) {
             exchangeDir = "exchange";
         }
-        Path targetDir = Paths.get(exchangeDir, jobName, context.getBatchNumber());
+        // 规范化路径，处理 .. 和 . 符号，并转换为绝对路径
+        Path targetDir = Paths.get(exchangeDir, jobName, context.getBatchNumber()).toAbsolutePath().normalize();
         fileSystemManager.ensureDirectory(targetDir);
 
         // 使用临时文件名进行压缩

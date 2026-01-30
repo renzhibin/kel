@@ -31,12 +31,13 @@ public class DiskSpaceChecker {
         }
 
         try {
-            Path targetPath = Paths.get(path);
+            // 规范化路径，处理 .. 和 . 符号，并转换为绝对路径
+            Path targetPath = Paths.get(path).toAbsolutePath().normalize();
             if (!Files.exists(targetPath)) {
                 // 如果路径不存在，检查父目录
                 targetPath = targetPath.getParent();
                 if (targetPath == null) {
-                    targetPath = Paths.get(".");
+                    targetPath = Paths.get(".").toAbsolutePath().normalize();
                 }
             }
 
@@ -112,11 +113,12 @@ public class DiskSpaceChecker {
     public java.util.Map<String, Object> getDiskSpaceInfo(String path) {
         java.util.Map<String, Object> info = new java.util.HashMap<>();
         try {
-            Path targetPath = Paths.get(path);
+            // 规范化路径，处理 .. 和 . 符号，并转换为绝对路径
+            Path targetPath = Paths.get(path).toAbsolutePath().normalize();
             if (!Files.exists(targetPath)) {
                 targetPath = targetPath.getParent();
                 if (targetPath == null) {
-                    targetPath = Paths.get(".");
+                    targetPath = Paths.get(".").toAbsolutePath().normalize();
                 }
             }
 
