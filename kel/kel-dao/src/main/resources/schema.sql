@@ -1,5 +1,8 @@
--- 任务执行表
-CREATE TABLE IF NOT EXISTS task_execution (
+-- Kel 元数据库 schema：实例名 kel，所有表置于 kel schema 下。
+CREATE SCHEMA IF NOT EXISTS kel;
+
+-- 任务执行表（含执行日志：execution_log 合并原 task_execution_log）
+CREATE TABLE IF NOT EXISTS kel.task_execution (
     id BIGSERIAL PRIMARY KEY,
     job_code VARCHAR(100) NOT NULL,
     batch_number VARCHAR(50) NOT NULL,
@@ -12,33 +15,18 @@ CREATE TABLE IF NOT EXISTS task_execution (
     start_time TIMESTAMP,
     end_time TIMESTAMP,
     statistics TEXT,
+    execution_log JSONB DEFAULT '[]',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 创建索引
-CREATE INDEX IF NOT EXISTS idx_task_execution_job_code ON task_execution(job_code);
-CREATE INDEX IF NOT EXISTS idx_task_execution_batch_number ON task_execution(batch_number);
-CREATE INDEX IF NOT EXISTS idx_task_execution_status ON task_execution(status);
-CREATE INDEX IF NOT EXISTS idx_task_execution_created_at ON task_execution(created_at);
-
--- 任务执行日志表
-CREATE TABLE IF NOT EXISTS task_execution_log (
-    id BIGSERIAL PRIMARY KEY,
-    task_id BIGINT NOT NULL,
-    log_level VARCHAR(10) NOT NULL,
-    stage VARCHAR(50),
-    message TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES task_execution(id) ON DELETE CASCADE
-);
-
--- 创建索引
-CREATE INDEX IF NOT EXISTS idx_task_execution_log_task_id ON task_execution_log(task_id);
-CREATE INDEX IF NOT EXISTS idx_task_execution_log_created_at ON task_execution_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_task_execution_job_code ON kel.task_execution(job_code);
+CREATE INDEX IF NOT EXISTS idx_task_execution_batch_number ON kel.task_execution(batch_number);
+CREATE INDEX IF NOT EXISTS idx_task_execution_status ON kel.task_execution(status);
+CREATE INDEX IF NOT EXISTS idx_task_execution_created_at ON kel.task_execution(created_at);
 
 -- 任务执行统计表
-CREATE TABLE IF NOT EXISTS task_execution_stats (
+CREATE TABLE IF NOT EXISTS kel.task_execution_stats (
     id BIGSERIAL PRIMARY KEY,
     task_id BIGINT NOT NULL,
     stat_type VARCHAR(50) NOT NULL,
@@ -46,14 +34,40 @@ CREATE TABLE IF NOT EXISTS task_execution_stats (
     stat_value BIGINT,
     stat_value_str VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES task_execution(id) ON DELETE CASCADE
+    FOREIGN KEY (task_id) REFERENCES kel.task_execution(id) ON DELETE CASCADE
 );
 
--- 创建索引
-CREATE INDEX IF NOT EXISTS idx_task_execution_stats_task_id ON task_execution_stats(task_id);
-CREATE INDEX IF NOT EXISTS idx_task_execution_stats_type ON task_execution_stats(stat_type);
+CREATE INDEX IF NOT EXISTS idx_task_execution_stats_task_id ON kel.task_execution_stats(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_execution_stats_type ON kel.task_execution_stats(stat_type);
 
--- 更新时间触发器函数
+-- 配置表（全局与作业 YAML，配置仅从 DB 加载）
+CREATE TABLE IF NOT EXISTS kel.job_config (
+    id BIGSERIAL PRIMARY KEY,
+    config_key VARCHAR(100) NOT NULL UNIQUE,
+    content_yaml TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_job_config_config_key ON kel.job_config(config_key);
+
+-- 人工表级导出记录
+CREATE TABLE IF NOT EXISTS kel.manual_export (
+    id BIGSERIAL PRIMARY KEY,
+    job_code VARCHAR(100) NOT NULL,
+    table_name VARCHAR(200) NOT NULL,
+    mode VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    task_id BIGINT,
+    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    requested_by VARCHAR(100),
+    FOREIGN KEY (task_id) REFERENCES kel.task_execution(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_manual_export_job_code ON kel.manual_export(job_code);
+CREATE INDEX IF NOT EXISTS idx_manual_export_table_name ON kel.manual_export(table_name);
+CREATE INDEX IF NOT EXISTS idx_manual_export_status ON kel.manual_export(status);
+CREATE INDEX IF NOT EXISTS idx_manual_export_requested_at ON kel.manual_export(requested_at);
+
+-- 更新时间触发器函数（放在 public 以便复用）
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -62,9 +76,14 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- 创建触发器
-DROP TRIGGER IF EXISTS update_task_execution_updated_at ON task_execution;
+DROP TRIGGER IF EXISTS update_task_execution_updated_at ON kel.task_execution;
 CREATE TRIGGER update_task_execution_updated_at
-    BEFORE UPDATE ON task_execution
+    BEFORE UPDATE ON kel.task_execution
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    EXECUTE PROCEDURE update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_job_config_updated_at ON kel.job_config;
+CREATE TRIGGER update_job_config_updated_at
+    BEFORE UPDATE ON kel.job_config
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_updated_at_column();

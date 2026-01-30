@@ -1,9 +1,9 @@
 package org.csits.kel.server.service;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Optional;
 import org.csits.kel.dao.TaskExecutionEntity;
 import org.csits.kel.dao.TaskExecutionRepository;
@@ -28,11 +28,11 @@ class TaskLoggerTest {
 
     @BeforeEach
     void setUp() {
-        taskLogger = new TaskLogger(taskExecutionRepository);
+        taskLogger = new TaskLogger(taskExecutionRepository, new ObjectMapper());
         entity = new TaskExecutionEntity();
         entity.setTaskId(1L);
         entity.setJobCode("job1");
-        entity.setStatus(TaskExecutionStatus.RUNNING);
+        entity.setStatus(TaskExecutionStatus.RUNNING.name());
     }
 
     @Test
@@ -42,7 +42,7 @@ class TaskLoggerTest {
         taskLogger.logProgress(1L, "EXPORT", 50, "导出完成");
 
         ArgumentCaptor<TaskExecutionEntity> captor = ArgumentCaptor.forClass(TaskExecutionEntity.class);
-        verify(taskExecutionRepository).update(captor.capture());
+        verify(taskExecutionRepository).save(captor.capture());
         TaskExecutionEntity updated = captor.getValue();
         assertThat(updated.getProgress()).isEqualTo(50);
         assertThat(updated.getMessage()).isEqualTo("导出完成");
@@ -55,7 +55,7 @@ class TaskLoggerTest {
         taskLogger.markSuccess(1L, "任务完成");
 
         ArgumentCaptor<TaskExecutionEntity> captor = ArgumentCaptor.forClass(TaskExecutionEntity.class);
-        verify(taskExecutionRepository).update(captor.capture());
+        verify(taskExecutionRepository).save(captor.capture());
         TaskExecutionEntity updated = captor.getValue();
         assertThat(updated.getStatus()).isEqualTo(TaskExecutionStatus.SUCCESS);
         assertThat(updated.getProgress()).isEqualTo(100);
@@ -70,7 +70,7 @@ class TaskLoggerTest {
         taskLogger.markFailed(1L, "失败", "连接超时");
 
         ArgumentCaptor<TaskExecutionEntity> captor = ArgumentCaptor.forClass(TaskExecutionEntity.class);
-        verify(taskExecutionRepository).update(captor.capture());
+        verify(taskExecutionRepository).save(captor.capture());
         TaskExecutionEntity updated = captor.getValue();
         assertThat(updated.getStatus()).isEqualTo(TaskExecutionStatus.FAILED);
         assertThat(updated.getProgress()).isEqualTo(0);

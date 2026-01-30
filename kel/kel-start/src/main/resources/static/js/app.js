@@ -29,7 +29,19 @@ createApp({
             jobResult: null,
             diskPath: '/data',
             diskInfo: null,
-            autoRefresh: null
+            autoRefresh: null,
+            configKeys: [],
+            exportableTables: [],
+            tableExport: { configKey: '', tableName: '', mode: 'full' },
+            tableExportResult: null,
+            manualExports: [],
+            jobConfigList: [],
+            jobConfigModal: {
+                isEdit: false,
+                configKey: '',
+                contentYaml: ''
+            },
+            jobConfigError: null
         };
     },
     mounted() {
@@ -44,6 +56,10 @@ createApp({
                 this.loadRecentTasks();
             } else if (this.currentView === 'tasks') {
                 this.loadTasks();
+            } else if (this.currentView === 'tableExport') {
+                this.loadManualExports();
+            } else if (this.currentView === 'jobConfig') {
+                this.loadJobConfigs();
             }
         }, 5000);
     },
@@ -201,6 +217,154 @@ createApp({
                     success: false,
                     message: '触发失败: ' + (error.response?.data?.error || error.message)
                 };
+            }
+        },
+
+        async loadConfigKeys() {
+            try {
+                const response = await axios.get('/api/jobs/config-keys');
+                this.configKeys = response.data || [];
+            } catch (error) {
+                console.error('加载配置 key 失败:', error);
+                this.configKeys = [];
+            }
+        },
+
+        async loadExportableTables() {
+            if (!this.tableExport.configKey) {
+                this.exportableTables = [];
+                return;
+            }
+            try {
+                const response = await axios.get(`/api/jobs/${encodeURIComponent(this.tableExport.configKey)}/tables`);
+                this.exportableTables = response.data || [];
+                this.tableExport.tableName = '';
+            } catch (error) {
+                console.error('加载可导出表失败:', error);
+                this.exportableTables = [];
+            }
+        },
+
+        async loadManualExports() {
+            try {
+                const response = await axios.get('/api/manual-exports', {
+                    params: { page: 0, size: 50 }
+                });
+                this.manualExports = response.data.data || [];
+            } catch (error) {
+                console.error('加载表级导出历史失败:', error);
+                this.manualExports = [];
+            }
+        },
+
+        async loadJobConfigs() {
+            try {
+                const response = await axios.get('/api/jobs/configs');
+                this.jobConfigList = response.data || [];
+            } catch (error) {
+                console.error('加载作业配置列表失败:', error);
+                this.jobConfigList = [];
+            }
+        },
+
+        openAddJobConfig() {
+            this.jobConfigError = null;
+            this.jobConfigModal = { isEdit: false, configKey: '', contentYaml: '' };
+            const modal = new bootstrap.Modal(document.getElementById('jobConfigModal'));
+            modal.show();
+        },
+
+        async openEditJobConfig(configKey) {
+            this.jobConfigError = null;
+            this.jobConfigModal = { isEdit: true, configKey: configKey, contentYaml: '' };
+            try {
+                const response = await axios.get(`/api/jobs/configs/${encodeURIComponent(configKey)}`);
+                this.jobConfigModal.contentYaml = response.data.contentYaml || '';
+            } catch (error) {
+                console.error('加载配置失败:', error);
+                this.jobConfigError = '加载配置失败: ' + (error.response?.data?.error || error.message);
+            }
+            const modal = new bootstrap.Modal(document.getElementById('jobConfigModal'));
+            modal.show();
+        },
+
+        closeJobConfigModal() {
+            this.jobConfigError = null;
+            this.jobConfigModal = { isEdit: false, configKey: '', contentYaml: '' };
+        },
+
+        async saveJobConfig() {
+            const key = (this.jobConfigModal.configKey || '').trim();
+            const yaml = this.jobConfigModal.contentYaml || '';
+            if (!key) {
+                this.jobConfigError = '配置 Key 不能为空';
+                return;
+            }
+            if (!yaml) {
+                this.jobConfigError = 'YAML 内容不能为空';
+                return;
+            }
+            this.jobConfigError = null;
+            try {
+                if (this.jobConfigModal.isEdit) {
+                    await axios.put(`/api/jobs/configs/${encodeURIComponent(key)}`, { contentYaml: yaml });
+                } else {
+                    await axios.post('/api/jobs/configs', { configKey: key, contentYaml: yaml });
+                }
+                bootstrap.Modal.getInstance(document.getElementById('jobConfigModal')).hide();
+                this.closeJobConfigModal();
+                this.loadJobConfigs();
+            } catch (error) {
+                this.jobConfigError = error.response?.data?.error || error.message;
+            }
+        },
+
+        async deleteJobConfig(configKey) {
+            if (configKey === '__global__') {
+                alert('不能删除全局配置');
+                return;
+            }
+            if (!confirm('确定要删除作业配置「' + configKey + '」吗？')) {
+                return;
+            }
+            try {
+                await axios.delete(`/api/jobs/configs/${encodeURIComponent(configKey)}`);
+                this.loadJobConfigs();
+            } catch (error) {
+                alert('删除失败: ' + (error.response?.data?.error || error.message));
+            }
+        },
+
+        async importConfigToDb() {
+            try {
+                const response = await axios.post('/api/jobs/admin/import-config');
+                alert(response.data.message || '导入完成');
+            } catch (error) {
+                console.error('导入配置失败:', error);
+                alert('导入失败: ' + (error.response?.data?.error || error.message));
+            }
+        },
+
+        async triggerTableExport() {
+            if (!this.tableExport.configKey || !this.tableExport.tableName) {
+                alert('请选择作业配置和表名');
+                return;
+            }
+            try {
+                const configKey = encodeURIComponent(this.tableExport.configKey);
+                const tableName = encodeURIComponent(this.tableExport.tableName);
+                const response = await axios.post(
+                    `/api/jobs/${configKey}/tables/${tableName}/export?mode=${this.tableExport.mode}`
+                );
+                this.tableExportResult = {
+                    message: response.data.message || '表级导出已启动',
+                    taskId: response.data.taskId,
+                    batchNumber: response.data.batchNumber
+                };
+                this.loadManualExports();
+            } catch (error) {
+                console.error('触发表级导出失败:', error);
+                alert('触发表级导出失败: ' + (error.response?.data?.error || error.message));
             }
         },
 

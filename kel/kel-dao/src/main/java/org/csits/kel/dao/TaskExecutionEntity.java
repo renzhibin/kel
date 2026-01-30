@@ -37,6 +37,11 @@ public class TaskExecutionEntity {
 
     private String statistics;
 
+    /**
+     * 执行日志（原 task_execution_log 合并），JSON 数组，元素含 log_level、stage、message、created_at。
+     */
+    private String executionLog;
+
     // 兼容旧代码的getter/setter
     public Long getTaskId() {
         return id;

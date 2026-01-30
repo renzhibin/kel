@@ -3,14 +3,16 @@ package org.csits.kel.config;
 import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * xxl-job 执行器配置。
+ * xxl-job 执行器配置。未启动调度中心时可设置 xxl.job.executor.enabled=false 关闭执行器，避免注册失败日志。
  */
 @Slf4j
 @Configuration
+@ConditionalOnProperty(name = "xxl.job.executor.enabled", havingValue = "true", matchIfMissing = true)
 public class XxlJobConfig {
 
     @Value("${xxl.job.admin.addresses}")

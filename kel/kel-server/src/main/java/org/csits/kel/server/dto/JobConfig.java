@@ -27,8 +27,10 @@ public class JobConfig {
 
     private String exchangeDir;
 
+    @JsonProperty("extract_tasks")
     private List<ExtractTaskConfig> extractTasks;
 
+    @JsonProperty("load_tasks")
     private List<LoadTaskConfig> loadTasks;
 
     private RuntimeConfig runtime;

@@ -1,15 +1,13 @@
+# 默认使用数据库持久化；DataSource 由 application-database.yml 提供
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  profiles:
+    active: database
 
 server:
   port: 8082
 kel:
   conf:
     base-dir: classpath:conf/dev
-  persistence:
-    type: memory
 
 xxl:
   job:
@@ -17,6 +15,7 @@ xxl:
     admin:
       addresses: http://localhost:8080/xxl-job-admin
     executor:
+      enabled: true   # 未启动调度中心时设为 false，避免 Connection refused 注册失败日志
       appname: kel-executor
       # address 留空时自动注册为 ip:port
       address:

@@ -72,6 +72,16 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'jobConfig'}" @click="currentView = 'jobConfig'; loadJobConfigs()" href="#">
+                                <i class="bi bi-file-earmark-text"></i> 作业配置
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" :class="{active: currentView === 'tableExport'}" @click="currentView = 'tableExport'; loadConfigKeys(); loadManualExports()" href="#">
+                                <i class="bi bi-table"></i> 表级导出
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" :class="{active: currentView === 'system'}" @click="currentView = 'system'" href="#">
                                 <i class="bi bi-gear"></i> 系统监控
                             </a>
@@ -258,7 +268,11 @@
             <!-- 作业执行视图 -->
             <div v-if="currentView === 'jobs'">
                 <h2 class="mb-4">作业执行</h2>
-
+                <div class="mb-3">
+                    <button class="btn btn-outline-secondary btn-sm" @click="importConfigToDb" title="将 classpath 下 conf 的 YAML 导入到数据库（仅 database 模式有效）">
+                        <i class="bi bi-upload"></i> 导入配置到 DB
+                    </button>
+                </div>
                 <div class="row">
                     <div class="col-md-6">
                         <div class="card">
@@ -307,6 +321,118 @@
                         <button v-if="jobResult.taskId" class="btn btn-info" @click="viewTaskDetail(jobResult.taskId)">
                             查看任务详情
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作业配置视图 -->
+            <div v-if="currentView === 'jobConfig'">
+                <h2 class="mb-4">作业配置</h2>
+                <div class="mb-3">
+                    <button class="btn btn-primary" @click="openAddJobConfig">
+                        <i class="bi bi-plus-lg"></i> 新增作业
+                    </button>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>配置 Key</th>
+                                    <th>更新时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in jobConfigList" :key="item.configKey">
+                                    <td>{{ item.configKey }}</td>
+                                    <td>{{ formatDate(item.updatedAt) }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary me-1" @click="openEditJobConfig(item.configKey)">
+                                            <i class="bi bi-pencil"></i> 编辑
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="deleteJobConfig(item.configKey)" :disabled="item.configKey === '__global__'">
+                                            <i class="bi bi-trash"></i> 删除
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p v-if="jobConfigList.length === 0" class="text-muted mb-0">暂无配置</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 表级导出视图 -->
+            <div v-if="currentView === 'tableExport'">
+                <h2 class="mb-4">表级导出</h2>
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">单表导出（全量/增量）</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">作业配置</label>
+                                <select class="form-select" v-model="tableExport.configKey" @change="loadExportableTables">
+                                    <option value="">请选择</option>
+                                    <option v-for="k in configKeys" :key="k" :value="k">{{ k }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">表名</label>
+                                <select class="form-select" v-model="tableExport.tableName">
+                                    <option value="">请选择</option>
+                                    <option v-for="t in exportableTables" :key="t" :value="t">{{ t }}</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">模式</label>
+                                <select class="form-select" v-model="tableExport.mode">
+                                    <option value="full">全量</option>
+                                    <option value="incremental">增量</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" @click="triggerTableExport" :disabled="!tableExport.configKey || !tableExport.tableName">
+                            <i class="bi bi-play-fill"></i> 导出
+                        </button>
+                        <div v-if="tableExportResult" class="mt-3">
+                            <p class="text-success mb-0" v-if="tableExportResult.message">{{ tableExportResult.message }}</p>
+                            <span v-if="tableExportResult.taskId">
+                                <button class="btn btn-sm btn-info" @click="viewTaskDetail(tableExportResult.taskId)">查看任务</button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">表级导出历史</div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>作业</th>
+                                    <th>表名</th>
+                                    <th>模式</th>
+                                    <th>状态</th>
+                                    <th>请求时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="r in manualExports" :key="r.id">
+                                    <td>{{ r.jobCode }}</td>
+                                    <td>{{ r.tableName }}</td>
+                                    <td>{{ r.mode }}</td>
+                                    <td><span class="badge" :class="getStatusClass(r.status)">{{ r.status }}</span></td>
+                                    <td>{{ formatDate(r.requestedAt) }}</td>
+                                    <td>
+                                        <button v-if="r.taskId" class="btn btn-sm btn-info" @click="viewTaskDetail(r.taskId)">任务</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p v-if="manualExports.length === 0" class="text-muted mb-0">暂无记录（或未启用数据库持久化）</p>
                     </div>
                 </div>
             </div>
@@ -362,6 +488,37 @@
                                 </tr>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 作业配置新增/编辑模态框 -->
+        <div class="modal fade" id="jobConfigModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ jobConfigModal.isEdit ? '编辑作业配置' : '新增作业配置' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" @click="closeJobConfigModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="jobConfigError" class="alert alert-danger">{{ jobConfigError }}</div>
+                        <div class="mb-3">
+                            <label class="form-label">配置 Key</label>
+                            <input type="text" class="form-control" v-model="jobConfigModal.configKey"
+                                   :readonly="jobConfigModal.isEdit" placeholder="如 my_job_extract">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">YAML 内容</label>
+                            <textarea class="form-control font-monospace" v-model="jobConfigModal.contentYaml"
+                                      rows="16" placeholder="输入 YAML 配置内容"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="closeJobConfigModal">取消</button>
+                        <button type="button" class="btn btn-primary" @click="saveJobConfig">
+                            {{ jobConfigModal.isEdit ? '保存' : '新增' }}
+                        </button>
                     </div>
                 </div>
             </div>

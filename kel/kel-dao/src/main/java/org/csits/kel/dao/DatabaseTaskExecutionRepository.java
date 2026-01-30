@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Repository;
  */
 @Slf4j
 @Repository
-@ConditionalOnProperty(name = "kel.persistence.type", havingValue = "database", matchIfMissing = true)
 @RequiredArgsConstructor
 public class DatabaseTaskExecutionRepository implements TaskExecutionRepository {
 
@@ -28,12 +26,12 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
 
     private static final String INSERT_SQL =
         "INSERT INTO task_execution (job_code, batch_number, status, node_name, config_snapshot, " +
-        "progress, current_stage, error_message, start_time, end_time, statistics) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "progress, current_stage, error_message, start_time, end_time, statistics, execution_log) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String UPDATE_SQL =
         "UPDATE task_execution SET status = ?, node_name = ?, config_snapshot = ?, " +
-        "progress = ?, current_stage = ?, error_message = ?, start_time = ?, end_time = ?, statistics = ? " +
+        "progress = ?, current_stage = ?, error_message = ?, start_time = ?, end_time = ?, statistics = ?, execution_log = ? " +
         "WHERE id = ?";
 
     private static final String SELECT_BY_ID_SQL =
@@ -79,6 +77,7 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
             ps.setTimestamp(9, toTimestamp(entity.getStartTime()));
             ps.setTimestamp(10, toTimestamp(entity.getEndTime()));
             ps.setString(11, entity.getStatistics());
+            ps.setString(12, entity.getExecutionLog() != null ? entity.getExecutionLog() : "[]");
             return ps;
         }, keyHolder);
 
@@ -100,6 +99,7 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
             toTimestamp(entity.getStartTime()),
             toTimestamp(entity.getEndTime()),
             entity.getStatistics(),
+            entity.getExecutionLog() != null ? entity.getExecutionLog() : "[]",
             entity.getId()
         );
 
@@ -175,6 +175,8 @@ public class DatabaseTaskExecutionRepository implements TaskExecutionRepository 
             entity.setStartTime(toLocalDateTime(rs.getTimestamp("start_time")));
             entity.setEndTime(toLocalDateTime(rs.getTimestamp("end_time")));
             entity.setStatistics(rs.getString("statistics"));
+            String executionLog = rs.getString("execution_log");
+            entity.setExecutionLog(executionLog != null ? executionLog : "[]");
             entity.setCreatedAt(toLocalDateTime(rs.getTimestamp("created_at")));
             entity.setUpdatedAt(toLocalDateTime(rs.getTimestamp("updated_at")));
             return entity;
